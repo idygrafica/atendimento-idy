@@ -1,0 +1,62 @@
+name: Validate recovered Functions
+
+on:
+  push:
+    branches: [recuperacao-atendimento-ia]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recovered-functions-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/recuperacao-atendimento-ia'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: recuperacao-atendimento-ia
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+      - name: Install and pin stable dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci --no-fund --no-audit
+          else
+            sdk_version="$(npm view @netlify/blobs dist-tags.latest)"
+            bundler_version="$(npm view @netlify/zip-it-and-ship-it dist-tags.latest)"
+            [[ "$sdk_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            [[ "$bundler_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            npm install --save-exact "@netlify/blobs@$sdk_version" --no-fund --no-audit
+            npm install --save-dev --save-exact "@netlify/zip-it-and-ship-it@$bundler_version" --no-fund --no-audit
+            npm ci --no-fund --no-audit
+          fi
+      - name: Test and validate builds without deployment
+        run: |
+          npm test
+          npm run check
+          npm run build
+          npm run build:functions
+          node scripts/update-manifest.mjs
+      - name: Commit validated lockfile and evidence to recovery branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = 'refs/heads/recuperacao-atendimento-ia'
+          git add package.json package-lock.json MANIFESTO.json recovery-evidence/functions-build.json
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Pin Netlify SDK and record validated Functions build'
+            git push origin HEAD:recuperacao-atendimento-ia
+          fi

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node tests/run.mjs",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "build:functions": "node scripts/build-functions.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "latest"
