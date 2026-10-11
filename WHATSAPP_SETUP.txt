@@ -6,9 +6,12 @@ Este pacote mantém o site atual e adiciona somente a função:
 Variáveis de ambiente necessárias na Netlify:
 - OPENAI_API_KEY (já usada pelo chat do site)
 - WHATSAPP_VERIFY_TOKEN (criar uma frase/token e usar exatamente o mesmo na Meta)
+- META_APP_SECRET (segredo do aplicativo Meta; valida a assinatura dos eventos POST)
 - WHATSAPP_ACCESS_TOKEN (será obtido na Meta)
 - WHATSAPP_PHONE_NUMBER_ID (será obtido na Meta)
 - META_GRAPH_VERSION (opcional; usar a versão indicada pela Meta)
 
 Primeira etapa: basta configurar WHATSAPP_VERIFY_TOKEN para validar a URL de callback.
 Depois, configurar ACCESS_TOKEN e PHONE_NUMBER_ID para o robô responder mensagens recebidas.
+
+IMPORTANTE: leia RECUPERACAO.md. Esta recuperação não autoriza publicar. O POST do webhook exige assinatura válida; somente VERIFY_TOKEN não habilita o recebimento de mensagens.

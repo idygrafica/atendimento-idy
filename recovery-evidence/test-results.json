@@ -1,0 +1,18 @@
+{
+  "runtime": "Node 24.19.0",
+  "tests": 39,
+  "passed": 39,
+  "failed": 0,
+  "backend_tests": 33,
+  "frontend_event_tests": 6,
+  "syntax": "passed",
+  "static_build": "passed",
+  "patch_check": "passed",
+  "patch_roundtrip": "passed",
+  "browser": "blocked: Chromium sockets EPERM",
+  "sdk_install": "blocked: npm proxy connection EPERM",
+  "real_openai": "not executed",
+  "real_whatsapp": "not executed",
+  "real_blobs": "not executed",
+  "deployment": "not executed"
+}

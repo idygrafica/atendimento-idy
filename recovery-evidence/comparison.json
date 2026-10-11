@@ -1,0 +1,27 @@
+{
+  "repository": "idygrafica/atendimento-idy",
+  "commit": "ef5c8c717e3f81f5cfd280b33d52944e655b7ad2",
+  "identical": [
+    "PAINEL_SETUP.txt",
+    "netlify.toml",
+    "index.html",
+    "WHATSAPP_SETUP.txt",
+    "politica-de-privacidade.html",
+    "README.txt",
+    "painel.html",
+    "exclusao-de-dados.html",
+    "WHATSAPP_INTERNO_SETUP.txt",
+    "package.json"
+  ],
+  "missing_in_github": [
+    "netlify/functions/whatsapp-webhook.mjs",
+    "netlify/functions/health.js",
+    "netlify/functions/conversation-store.mjs",
+    "netlify/functions/creative-preview.js",
+    "netlify/functions/panel-api.mjs",
+    "netlify/functions/notify-idy-whatsapp.js",
+    "netlify/functions/chat.js"
+  ],
+  "different": [],
+  "only_in_github": []
+}

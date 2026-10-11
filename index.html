@@ -6,7 +6,7 @@
   <title>IDY Gráfica — Atendimento</title>
   <style>
     :root{--navy:#0b1f33;--green:#33a852;--bg:#f5f7f9;--card:#fff;--muted:#6b7280;--line:#dde3e8}
-    *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#172033}
+    *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#172033}
     .wrap{max-width:860px;margin:0 auto;padding:24px}.top{background:#fff;border-bottom:4px solid var(--green)}
     .brand{display:flex;align-items:center;gap:12px;padding:18px 24px;max-width:860px;margin:auto}.logo{font-size:28px;font-weight:800;color:var(--navy)}.logo b{color:var(--green)}
     .sub{color:var(--muted);font-size:14px}.panel{background:var(--card);border:1px solid var(--line);min-height:560px;display:flex;flex-direction:column}
@@ -31,7 +31,7 @@
       <div id="filetag" class="filetag"></div>
       <div class="composer">
         <button class="attach" id="attach" title="Anexar arte ou logo">📎</button>
-        <textarea id="message" placeholder="Digite sua mensagem..."></textarea>
+        <textarea maxlength="4000" aria-label="Mensagem para o atendimento" id="message" placeholder="Digite sua mensagem..."></textarea>
         <button id="send">Enviar</button>
       </div>
       <div class="leadbar"><button id="lead" class="leadbtn">Enviar atendimento para a IDY</button></div>
@@ -72,6 +72,7 @@ const dialogFile=document.getElementById('dialogFile');
 const leadDialog=document.getElementById('leadDialog');
 const history=[];
 let selectedFile=null;
+let asking=false;
 
 function addMsg(text,who='bot'){
   const el=document.createElement('div');el.className='msg '+who;
@@ -85,16 +86,16 @@ function addMsg(text,who='bot'){
 }
 
 async function ask(){
-  const text=input.value.trim();if(!text)return;
+  const text=input.value.trim();if(!text||asking)return;asking=true;
   addMsg(text,'user');history.push({role:'user',content:text});input.value='';send.disabled=true;statusEl.textContent='Respondendo...';
   try{
-    const r=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
+    const r=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history.slice(-12)})});
     const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`HTTP ${r.status}`);
     const answer=data.answer||'Não consegui gerar uma resposta.';addMsg(answer,'bot');history.push({role:'assistant',content:answer});statusEl.textContent='Pronto.';
-  }catch(e){addMsg('Erro de conexão: '+e.message,'bot');statusEl.textContent='Falha na conexão.';}finally{send.disabled=false;input.focus();}
+  }catch(e){addMsg('Erro de conexão: '+e.message,'bot');statusEl.textContent='Falha na conexão.';}finally{asking=false;send.disabled=false;input.focus();}
 }
 
-send.addEventListener('click',ask);input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask();}});
+send.addEventListener('click',ask);input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();ask();}});
 
 document.getElementById('attach').addEventListener('click',()=>fileInput.click());
 fileInput.addEventListener('change',()=>{
@@ -117,23 +118,20 @@ document.getElementById('submitLead').addEventListener('click',async()=>{
     const fd=new FormData();fd.append('form-name','atendimento-idy');fd.append('nome',nome);fd.append('whatsapp',whatsapp);fd.append('resumo',resumo||'Atendimento sem histórico.');if(selectedFile)fd.append('arte',selectedFile,selectedFile.name);
     const r=await fetch('/',{method:'POST',body:fd});if(!r.ok)throw new Error('Não foi possível registrar o atendimento.');
 
-    // Além de registrar o atendimento na Netlify (e manter o e-mail como segurança),
-    // envia um aviso com o resumo para o WhatsApp interno da IDY.
-    fetch('/.netlify/functions/notify-idy-whatsapp',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        nome,
-        whatsapp,
-        resumo:resumo||'Atendimento sem histórico.',
-        arquivo:selectedFile?selectedFile.name:''
-      })
-    }).then(async resp=>{
-      const data=await resp.json().catch(()=>({}));
-      if(!resp.ok || data.ok===false) console.warn('Aviso WhatsApp IDY não enviado:',data.error||resp.status);
-    }).catch(err=>console.warn('Falha ao avisar WhatsApp IDY:',err));
-
-    leadDialog.close();addMsg('Recebi seus dados e o atendimento foi encaminhado para a IDY Gráfica. A equipe pode retornar pelo WhatsApp informado.','bot');statusEl.textContent='Atendimento enviado para a IDY.';
+    leadDialog.close();
+    addMsg('Seu atendimento foi registrado para a IDY Gráfica. A equipe pode retornar pelo WhatsApp informado.','bot');
+    statusEl.textContent='Atendimento registrado. Avisando a equipe...';
+    try{
+      const aviso=await fetch('/.netlify/functions/notify-idy-whatsapp',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({nome,whatsapp,resumo:resumo||'Atendimento sem histórico.',arquivo:selectedFile?selectedFile.name:''})
+      });
+      const resultado=await aviso.json().catch(()=>({}));
+      if(!aviso.ok||resultado.ok!==true)throw new Error('Aviso não confirmado.');
+      statusEl.textContent='Atendimento registrado e equipe avisada pelo WhatsApp.';
+    }catch{
+      statusEl.textContent='Atendimento registrado. O aviso por WhatsApp não foi confirmado; a equipe pode consultar o registro.';
+    }
   }catch(e){alert(e.message);}finally{btn.disabled=false;btn.textContent='Enviar para a IDY';}
 });
 
