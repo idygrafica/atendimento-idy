@@ -1,5 +1,5 @@
 {
-  "runtime": "Node 24.19.0",
+  "runtime": "Node 22.23.3 (GitHub Actions)",
   "tests": 39,
   "passed": 39,
   "failed": 0,
@@ -10,9 +10,14 @@
   "patch_check": "passed",
   "patch_roundtrip": "passed",
   "browser": "blocked: Chromium sockets EPERM",
-  "sdk_install": "blocked: npm proxy connection EPERM",
+  "sdk_install": "passed: @netlify/blobs 11.1.4; npm ci",
   "real_openai": "not executed",
   "real_whatsapp": "not executed",
   "real_blobs": "not executed",
-  "deployment": "not executed"
+  "deployment": "not executed",
+  "previous_runtime": "Node 24.19.0",
+  "sdk_api": "passed: real SDK imported; store methods checked without remote requests",
+  "functions_build": "passed: 6 Functions with real dependencies",
+  "lockfile": "package-lock.json generated and committed",
+  "ci_run": "https://github.com/idygrafica/atendimento-idy/actions/runs/38152761117"
 }

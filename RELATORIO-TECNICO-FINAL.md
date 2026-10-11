@@ -39,7 +39,7 @@ Atualizados: `index.html`, `painel.html`, `package.json`, `netlify.toml` e os do
 
 ## Testes e limites
 
-Executados em Node.js 24.19.0:
+Validação original em Node.js 24.19.0; repetida com dependências instaladas em Node.js 22.23.3 no GitHub Actions:
 
 - `npm test`: **39 testes aprovados, zero falhas** — 33 de backend e seis de eventos das interfaces.
 - `npm run check`: sintaxe das funções, módulos, testes e scripts das páginas aprovada.
@@ -50,7 +50,7 @@ OpenAI e Meta foram simulados; Blobs foi substituído por um adaptador em memór
 
 O teste visual `tests/browser-smoke.py` foi preparado, mas o Chromium falhou ao iniciar por restrições de sockets do ambiente. Não houve validação visual concluída em celular ou desktop. Os seis testes das interfaces usam DOM mínimo e não medem layout.
 
-A consulta/instalação de `@netlify/blobs` foi bloqueada pelo acesso de rede. Não há `node_modules`, lockfile nem teste do SDK real/bundle Netlify. A dependência original `latest` permanece provisoriamente: antes de integrar, instalar, confirmar uma versão compatível com as operações condicionais, fixar a versão e gerar `package-lock.json`. Isso é um bloqueio para produção. Node 22 foi configurado como alvo; sintaxe/runtime foram testados no Node 24 disponível, não no runtime Netlify.
+Atualização de 11/10/2026: o bloqueio local de npm (`EPERM` ao conectar ao proxy) foi resolvido para esta etapa usando GitHub Actions, exclusivamente na branch `recuperacao-atendimento-ia`. Foram instalados e fixados `@netlify/blobs` **11.1.4** e o empacotador oficial `@netlify/zip-it-and-ship-it` **16.3.0**. O `package-lock.json` está versionado e uma reinstalação limpa com `npm ci` passou. Os 39 testes, a sintaxe, o build estático e `npm run build:functions` passaram em **Node 22.23.3**. As seis Functions foram empacotadas para `nodejs22.x`: quatro v1 com esbuild e duas v2 com NFT, que é o comportamento obrigatório do empacotador oficial para a API v2. O SDK real foi importado, sua API básica foi conferida e seus arquivos foram incluídos nos pacotes do painel e webhook. Não houve chamada a armazenamento remoto nem validação do contexto fornecido pela plataforma. Evidência: `recovery-evidence/functions-build.json` e [execução aprovada](https://github.com/idygrafica/atendimento-idy/actions/runs/38152761117).
 
 ## Configuração necessária
 
@@ -67,8 +67,8 @@ Use `.env.example` como catálogo, sem colocar credenciais no GitHub.
 
 ## Pendências antes de produção
 
-1. Instalar/fixar dependência e lockfile; validar build das Functions e Blobs real em ambiente de teste, com dados e credenciais próprios para teste.
-2. Conferir configurações, deploy ativo e vínculo GitHub–Netlify sem disparar publicação automática. Integrar depois por branch e revisão no repositório existente.
+1. Testar leitura, escrita condicional, concorrência e contexto de Blobs em ambiente Netlify de homologação, com dados próprios para teste. Instalação, versões fixadas, lockfile e empacotamento das Functions já foram concluídos.
+2. Revisar o PR #1, já aberto na branch `recuperacao-atendimento-ia` do repositório existente. O proprietário confirmou `Current repository: Not linked` no Netlify. Merge e publicação continuam dependendo de autorização; nenhum deles foi realizado.
 3. Configurar e testar OpenAI, Meta, callback assinado, template e notificações Forms. Verificar latências e limites do runtime; geração de imagens pode precisar de trabalho em segundo plano.
 4. Aplicar limitação de uso/custos e proteção contra abuso aos endpoints públicos de chat e aviso interno. A checagem de Origin reduz chamadas de outros sites no navegador, mas **não autentica clientes nem bloqueia chamadas feitas por scripts**. O aviso ainda não comprova, no servidor, a existência de uma submissão Forms; recomenda-se vinculá-lo a evento validado de formulário. Essas proteções são pendências para produção.
 5. Validar visualmente as telas, uploads e teclado em celular. Conferir envios incertos antes de reenviar. Mensagens manuais não possuem chave de idempotência e exigem cuidado em retentativas.
@@ -80,12 +80,12 @@ Unificar histórico do chat web com o painel; ler conteúdo real dos anexos e m�
 
 ## Integração sem reconstrução
 
-Aplicar o patch ao commit indicado em uma branch de trabalho do **mesmo** repositório. Conferir se pushes de branches disparam Deploy Previews antes de enviar a branch, pois esta etapa não autoriza publicação. Instalar/fixar dependências, repetir os testes e verificar serviços externos. Somente depois da revisão e autorização integrar à principal e publicar. Não alterar o site institucional.
+Os 35 arquivos preparados permanecem integrados à branch `recuperacao-atendimento-ia` do **mesmo** repositório, no [PR #1](https://github.com/idygrafica/atendimento-idy/pull/1). Foram acrescentados lockfile, workflow e scripts/evidência de validação. Para repetir a validação, usar Node 22, `npm ci`, `npm test`, `npm run check`, `npm run build` e `npm run build:functions`. Somente após revisão e autorização integrar à principal e publicar. O site institucional permanece preservado.
 
-A referência para as operações de armazenamento é a [documentação oficial de Netlify Blobs](https://docs.netlify.com/build/data-and-storage/netlify-blobs/). A compatibilidade concreta do SDK e da conta permanece pendente.
+A referência para as operações de armazenamento é a [documentação oficial de Netlify Blobs](https://docs.netlify.com/build/data-and-storage/netlify-blobs/). A importação da API do SDK e o empacotamento com a dependência real foram aprovados; o uso autenticado da conta e a semântica de concorrência remota permanecem pendentes.
 
 
-## Entrega final do pacote
+## Histórico da entrega do pacote (anterior à atualização do PR)
 
 ZIP único: `IDY-Grafica-atendimento-completo-corrigido.zip`. O código completo fica na raiz para integração ao repositório existente, com os caminhos de Functions preservados. O módulo de armazenamento está em `lib/`, pois é uma biblioteca e não uma sétima função HTTP. O ZIP inclui este relatório, as evidências da comparação e dos 39 testes já aprovados, e `MANIFESTO.json` com hash SHA-256 de cada arquivo.
 
@@ -95,6 +95,6 @@ O diretório `public/` é gerado por `npm run build` e não precisa ser versiona
 
 ### Solução simples para as limitações
 
-Em um ambiente de desenvolvimento com rede e Node 22, instalar `@netlify/blobs`, confirmar compatibilidade, fixar sua versão e gerar `package-lock.json`. Depois executar `npm test`, `npm run check` e `npm run build`; configurar um armazenamento e credenciais próprios para teste e validar o runtime das Functions sem publicar em produção. O teste visual pode ser executado em uma máquina com Python, Playwright e Chromium, ajustando o caminho do executável em `tests/browser-smoke.py` quando necessário.
+A instalação e validação foram concluídas no GitHub Actions; o lockfile está no PR #1. Em uma máquina com acesso ao registro npm e Node 22, usar `npm ci` e os comandos de validação indicados acima. A rede local deste ambiente continua bloqueada; para instalar aqui, seria necessário liberar o acesso ao proxy/registro npm. Configurar um armazenamento e credenciais próprios para homologação e validar a execução das Functions na plataforma, sem publicar em produção. O teste visual pode ser executado em uma máquina com Python, Playwright e Chromium, ajustando o caminho do executável em `tests/browser-smoke.py` quando necessário.
 
-Antes de qualquer push, conferir a configuração GitHub–Netlify para impedir deploy automático. A integração deve ocorrer em branch de trabalho do mesmo repositório, mediante a próxima autorização. O pacote está completo como fonte para integração e validação; não há confirmação de funcionamento dos serviços reais ou liberação para produção.
+O proprietário já confirmou a ausência de vínculo automático GitHub–Netlify, e autorizou os pushes exclusivamente à branch de recuperação. O PR está aberto sem merge. A fonte está integrada para revisão e homologação; não há confirmação de funcionamento dos serviços reais ou liberação para produção.

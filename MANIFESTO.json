@@ -30,13 +30,13 @@
     },
     {
       "path": "RECUPERACAO.md",
-      "bytes": 9226,
-      "sha256": "70fc574a21d2d26e5844890c6dbde5f8a2f925d95c57a863e3e69c3bdb0923ec"
+      "bytes": 10219,
+      "sha256": "069bcc75d5f84c5859d18aeeb4fa791ce8bbf9f365d94b7576426679d8e851ee"
     },
     {
       "path": "RELATORIO-TECNICO-FINAL.md",
-      "bytes": 11356,
-      "sha256": "e7c5e5278d40c7410493b656370af24f3bd430d6da378c066eb210e93bcf0e41"
+      "bytes": 12489,
+      "sha256": "0517a1740a760ccda25117b7686f0ccf1f3960788653b657df02e4ce7df5b173"
     },
     {
       "path": "WHATSAPP_INTERNO_SETUP.txt",
@@ -155,8 +155,8 @@
     },
     {
       "path": "recovery-evidence/test-results.json",
-      "bytes": 474,
-      "sha256": "7aaac29f7bf8037394893f74d6c58d5cfae7870825616da7bb4c73b05102e133"
+      "bytes": 832,
+      "sha256": "2586c2db4cc3951789507bb0e4b9ce08316fed61307175e6c7965d234713d9a7"
     },
     {
       "path": "scripts/build-functions.mjs",
