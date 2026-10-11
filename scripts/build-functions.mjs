@@ -27,9 +27,11 @@ const functions = await zipFunctions(`${root}netlify/functions`, fileURLToPath(o
 const expected = ['chat', 'creative-preview', 'health', 'notify-idy-whatsapp', 'panel-api', 'whatsapp-webhook'];
 assert.deepEqual(functions.map(fn => fn.name).sort(), expected.sort());
 for (const fn of functions) {
-  assert.equal(fn.bundler, 'esbuild', `${fn.name}: bundler`);
+  // O empacotador oficial força NFT nas Functions v2, preservando ESM.
+  const isV2 = ['panel-api', 'whatsapp-webhook'].includes(fn.name);
+  assert.equal(fn.bundler, isV2 ? 'nft' : 'esbuild', `${fn.name}: bundler`);
   assert.ok(!fn.bundlerErrors?.length, `${fn.name}: erros de bundle`);
-  if (['panel-api', 'whatsapp-webhook'].includes(fn.name)) {
+  if (isV2) {
     assert.equal(fn.runtimeAPIVersion, 2, `${fn.name}: API v2`);
     assert.ok(fn.inputs.some(path => path.includes('/node_modules/@netlify/blobs/')), `${fn.name}: SDK real incluído`);
   }
