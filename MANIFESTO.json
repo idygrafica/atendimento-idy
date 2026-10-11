@@ -9,6 +9,11 @@
       "sha256": "c8db9fc4b8192fdd59ca23840df5aaa8393a7909fdeb8fa0a8f044a4214b12b3"
     },
     {
+      "path": ".github/workflows/validate-functions.yml",
+      "bytes": 2325,
+      "sha256": "c56ec91fab3bdab2c975f7c46ad148492c69629b12c53b4d2c564c6f75f61259"
+    },
+    {
       "path": ".gitignore",
       "bytes": 77,
       "sha256": "a31339f69a91c4724e46582ded6c90af95ab9d9463fd8c0c21f15ada0a3a5af2"
@@ -109,9 +114,14 @@
       "sha256": "aab776ebca9a77c68e16085d31ea346ff973b1adeab9812e48c82f4180cdaf2f"
     },
     {
+      "path": "package-lock.json",
+      "bytes": 190799,
+      "sha256": "bf7d82d1de67288250a4130ef95f297ae581f4a8f72cfee7bfbdac605ea0749d"
+    },
+    {
       "path": "package.json",
-      "bytes": 300,
-      "sha256": "b11ec55809cccac9d04a7fc8702cbb926dd061df450e0120d37bf5b0a0cb69dc"
+      "bytes": 437,
+      "sha256": "2f4fa96d8b284559890d8c7b63a0c54b2fa5fe354c379bb2edd0ba5240a8c0db"
     },
     {
       "path": "painel.html",
@@ -129,6 +139,11 @@
       "sha256": "9779d71532c5ce974a9f3484ecd0f48fed7956f9dd410fa3e688ca870e5237df"
     },
     {
+      "path": "recovery-evidence/functions-build.json",
+      "bytes": 1198,
+      "sha256": "430aa19e18734b15d5b4f4cdd317038e6839c7832e60c363d22b8024d51d3bbe"
+    },
+    {
       "path": "recovery-evidence/original-files.json",
       "bytes": 3851,
       "sha256": "975705216312eabda75332a9670648b3ecd9544406a5cb3e7cd243c89f1a34df"
@@ -144,6 +159,11 @@
       "sha256": "7aaac29f7bf8037394893f74d6c58d5cfae7870825616da7bb4c73b05102e133"
     },
     {
+      "path": "scripts/build-functions.mjs",
+      "bytes": 2885,
+      "sha256": "53026f64c81c92c9432cff44d391c148eb9e1f1210044bc1c8b23fa4b7cab888"
+    },
+    {
       "path": "scripts/build.mjs",
       "bytes": 585,
       "sha256": "6febe823ec8b00c355f90abb10d9162cf7a23dac5a74f77304434dc11ae13449"
@@ -152,6 +172,11 @@
       "path": "scripts/check.mjs",
       "bytes": 1008,
       "sha256": "d614909a5c66d58d6dfdeaccd6d312be7d892107c343b7181c6cabea302d904e"
+    },
+    {
+      "path": "scripts/update-manifest.mjs",
+      "bytes": 840,
+      "sha256": "61e7d23cc9bfd46743c528d9c24c9a5f4f0924ad7380d6cb1532fca3d30e683a"
     },
     {
       "path": "tests/backend.test.mjs",
