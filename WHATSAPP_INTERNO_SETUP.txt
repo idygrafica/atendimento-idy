@@ -1,0 +1,30 @@
+IDY GRÁFICA — AVISO DE NOVO ATENDIMENTO NO WHATSAPP
+
+Este pacote mantém o atendimento atual e acrescenta:
+- O formulário continua sendo registrado na Netlify Forms.
+- O e-mail atual pode continuar funcionando como segurança.
+- Ao clicar em "Enviar atendimento para a IDY", o sistema também tenta enviar um resumo para o WhatsApp interno da IDY.
+
+Destino padrão do aviso:
+- +55 51 98168-7562
+
+Variáveis já usadas pelo robô e reaproveitadas:
+- WHATSAPP_ACCESS_TOKEN
+- WHATSAPP_PHONE_NUMBER_ID
+- META_GRAPH_VERSION (opcional)
+
+Variável opcional para mudar o WhatsApp que recebe os avisos:
+- IDY_NOTIFICATION_WHATSAPP
+  Exemplo: 5551981687562
+
+IMPORTANTE SOBRE A JANELA DE 24 HORAS
+- A API oficial permite texto livre quando esse WhatsApp interno tem uma conversa aberta com o número do robô dentro da janela permitida pela Meta.
+- Para o aviso funcionar sempre, inclusive depois de 24 horas, crie um template aprovado na Meta e configure:
+  WHATSAPP_LEAD_TEMPLATE_NAME
+- O template deve ter 3 variáveis no corpo, nesta ordem:
+  1. Nome do cliente
+  2. WhatsApp do cliente
+  3. Resumo do atendimento
+- Idioma padrão: pt_BR. Se necessário, use WHATSAPP_LEAD_TEMPLATE_LANGUAGE.
+
+Não é necessário remover a notificação por e-mail. Recomenda-se mantê-la como backup até o template permanente estar aprovado e testado.

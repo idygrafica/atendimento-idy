@@ -1,0 +1,13 @@
+PAINEL IDY — configuração
+
+Este pacote usa Netlify Functions v2 para o painel e o webhook do WhatsApp.
+O Netlify Blobs é configurado automaticamente pela própria Netlify.
+
+Variável necessária para o painel:
+PANEL_ACCESS_KEY = sua senha interna
+
+As variáveis já usadas pelo WhatsApp/OpenAI continuam iguais.
+NETLIFY_SITE_ID e NETLIFY_AUTH_TOKEN não são necessários para o painel com este pacote.
+
+Painel:
+https://atendimento-idy.netlify.app/painel.html
