@@ -1,0 +1,107 @@
+{
+  "zip_sha256": "51db9f81c2c3af2cc91bff986d486c2f48b1b66582d68490eec391438029541b",
+  "files": [
+    {
+      "path": "PAINEL_SETUP.txt",
+      "bytes": 465,
+      "sha256": "3a02acbe815d010fc0c85681a4a1b05aad7bf7b6e2c6e3e80c56d6bb2e4cae9d",
+      "git_blob": "5028f9c60cfc856b443dcd8c4733d1a82a415426"
+    },
+    {
+      "path": "netlify.toml",
+      "bytes": 58,
+      "sha256": "7ee154bcc11cd3b09334fb985541e117e0ad83b68bf750f580258f5d8b291153",
+      "git_blob": "0bb9dcf18698a9358fe1f6d282944ae9b328c956"
+    },
+    {
+      "path": "index.html",
+      "bytes": 10001,
+      "sha256": "5b12e7b288b89433d768036a85d4cd38e194c751d0a4fe623a56f77522d1b409",
+      "git_blob": "92fbe07454872a591b2b1143a86729972e8e3171"
+    },
+    {
+      "path": "WHATSAPP_SETUP.txt",
+      "bytes": 660,
+      "sha256": "a94203cb60940b4d7e277e6e65a6005409272f807c0c5bf23dff6d435185284c",
+      "git_blob": "c42ecd02e22b21dd39c7ff38e89e7e2233eb5b39"
+    },
+    {
+      "path": "netlify/functions/whatsapp-webhook.mjs",
+      "bytes": 5227,
+      "sha256": "93f28acedbb3c16de79275a367ef2a007a1b2894aaeb18fb3ede684ce74cfa60",
+      "git_blob": "81b5dc38e5038da2d3d0f6ca81b9e13810a12715"
+    },
+    {
+      "path": "netlify/functions/health.js",
+      "bytes": 232,
+      "sha256": "b0e3c13902ce9f493bce9684ca3c402d9cad3c295848c90f8b74e7734f2991f0",
+      "git_blob": "fb8543c0ba0abf641dcf6f6231b2533f6ce9aebc"
+    },
+    {
+      "path": "netlify/functions/conversation-store.mjs",
+      "bytes": 1775,
+      "sha256": "8728c373bc4c082f7dc246a363b634ac8bd208eab5d34e1198b06ebf79e3a35d",
+      "git_blob": "84909fe90149daca0d1d38a515f4633022129d43"
+    },
+    {
+      "path": "netlify/functions/creative-preview.js",
+      "bytes": 2283,
+      "sha256": "14916d45888c08c2d079a55cd08545ea11a981ada605fb51a334353d6a623253",
+      "git_blob": "aa312c4a094d3a7d76be8eae8cc6d7d40cf14f0e"
+    },
+    {
+      "path": "netlify/functions/panel-api.mjs",
+      "bytes": 3113,
+      "sha256": "f47fe03a266971b78583b1794b2acb6d46b7a3c22be1f1a316ac4907e4d31191",
+      "git_blob": "e9c2972404628ed4fdd0ce8588aa41ee40a205ee"
+    },
+    {
+      "path": "netlify/functions/notify-idy-whatsapp.js",
+      "bytes": 4307,
+      "sha256": "df13b5ee447f9f1a50667a74b6cd9f40e2d1d2dcaee6cb694498882403d91e5b",
+      "git_blob": "64ccd3f77c88a79dba4cf90163434fb3137ff3f3"
+    },
+    {
+      "path": "netlify/functions/chat.js",
+      "bytes": 6615,
+      "sha256": "8c71d3ea6218164ef4528f606e295c4b3e220a9c45f7f656016a62fc1c94242d",
+      "git_blob": "4b8d57bd9dfcb1fd2b291d3c01e6f13026f6759d"
+    },
+    {
+      "path": "politica-de-privacidade.html",
+      "bytes": 3655,
+      "sha256": "bd4386e176d0c88304cd34506b14e964a1df51c367441e951e329fed9f962b76",
+      "git_blob": "ce455c24e407095d07bd2f5020bec21f74744fb6"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 979,
+      "sha256": "719ded36c3d44634ed6da12e0697de1f90a7df5a187213e6b3dbb77c7ef08095",
+      "git_blob": "1f041ffc1bfe9a520924af194799eb67e4e43649"
+    },
+    {
+      "path": "painel.html",
+      "bytes": 10648,
+      "sha256": "ff7add98a6795afb7b3acebc2bc1973292be9daa11ad218777e2ea497cd82013",
+      "git_blob": "3f1653abfd481d589733d6d78bdf2c7c2289beb6"
+    },
+    {
+      "path": "exclusao-de-dados.html",
+      "bytes": 1860,
+      "sha256": "8f249051154715507b9c12285e81d16201df87561f71a7751b959c99a1b586aa",
+      "git_blob": "9ff6e3da472aab9ab799e8788846e300659d4050"
+    },
+    {
+      "path": "WHATSAPP_INTERNO_SETUP.txt",
+      "bytes": 1334,
+      "sha256": "db14313f87e3dd16ce12d7b5de0ac03bca389147c90f5b96ea9f2f46f85e3fa1",
+      "git_blob": "9a2059f6fa5c73283548805cea2172b56e741062"
+    },
+    {
+      "path": "package.json",
+      "bytes": 136,
+      "sha256": "61750f4e656894727f94796521e590ead27abe1fdf0413cd33d99c02eb029d40",
+      "git_blob": "68ac97d862d669e12869882e5e688ab424ec5203"
+    }
+  ]
+}

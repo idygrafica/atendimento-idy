@@ -1,6 +1,10 @@
+RECUPERAÇÃO LOCAL — NÃO PUBLICADA
+Leia RECUPERACAO.md para resultado, testes, configurações e bloqueios.
+As instruções antigas abaixo são histórico e não autorizam publicação.
+
 IDY GRÁFICA — ATENDIMENTO COM ANEXO E ENVIO PARA A IDY
 
-1. Publique esta pasta/ZIP no projeto atendimento-idy da Netlify.
+1. Após revisão e autorização, integrar ao repositório existente; não publicar este pacote diretamente.
 2. Mantenha OPENAI_API_KEY configurada em Production.
 3. Depois do deploy, faça um teste do chat.
 4. O botão de clipe aceita PDF, PNG e JPG, com limite definido pelo site em 8 MB.

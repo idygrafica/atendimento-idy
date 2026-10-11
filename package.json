@@ -2,7 +2,19 @@
   "name": "idy-atendimento-painel",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node tests/run.mjs",
+    "check": "node scripts/check.mjs",
+    "build:functions": "node scripts/build-functions.mjs"
+  },
   "dependencies": {
-    "@netlify/blobs": "latest"
+    "@netlify/blobs": "11.1.4"
+  },
+  "devDependencies": {
+    "@netlify/zip-it-and-ship-it": "16.3.0"
   }
 }

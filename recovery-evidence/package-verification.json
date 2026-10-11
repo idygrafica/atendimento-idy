@@ -1,0 +1,10 @@
+{
+  "scope": "packaged source",
+  "candidate_findings": 0,
+  "env_credentials": "empty",
+  "test_credentials": "fictitious test-only fixtures",
+  "source_matches_previous_package": true,
+  "required_files_present": true,
+  "local_imports_present": true,
+  "secrets_values_logged": false
+}

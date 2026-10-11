@@ -1,0 +1,52 @@
+{
+  "node": "v22.23.3",
+  "sdk": "11.1.4",
+  "bundler": "16.3.0",
+  "dependency_api": "passed (real SDK; no remote storage request)",
+  "functions": [
+    {
+      "name": "chat",
+      "bundler": "esbuild",
+      "runtimeAPIVersion": 1,
+      "runtimeVersion": "nodejs22.x",
+      "result": "passed"
+    },
+    {
+      "name": "creative-preview",
+      "bundler": "esbuild",
+      "runtimeAPIVersion": 1,
+      "runtimeVersion": "nodejs22.x",
+      "result": "passed"
+    },
+    {
+      "name": "health",
+      "bundler": "esbuild",
+      "runtimeAPIVersion": 1,
+      "runtimeVersion": "nodejs22.x",
+      "result": "passed"
+    },
+    {
+      "name": "notify-idy-whatsapp",
+      "bundler": "esbuild",
+      "runtimeAPIVersion": 1,
+      "runtimeVersion": "nodejs22.x",
+      "result": "passed"
+    },
+    {
+      "name": "panel-api",
+      "bundler": "nft",
+      "runtimeAPIVersion": 2,
+      "runtimeVersion": "nodejs22.x",
+      "result": "passed"
+    },
+    {
+      "name": "whatsapp-webhook",
+      "bundler": "nft",
+      "runtimeAPIVersion": 2,
+      "runtimeVersion": "nodejs22.x",
+      "result": "passed"
+    }
+  ],
+  "remote_providers": "not tested",
+  "deployment": "not executed"
+}

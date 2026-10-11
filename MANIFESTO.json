@@ -1,0 +1,218 @@
+{
+  "repository": "idygrafica/atendimento-idy",
+  "base_commit": "ef5c8c717e3f81f5cfd280b33d52944e655b7ad2",
+  "publication": "not executed",
+  "files": [
+    {
+      "path": ".env.example",
+      "bytes": 613,
+      "sha256": "c8db9fc4b8192fdd59ca23840df5aaa8393a7909fdeb8fa0a8f044a4214b12b3"
+    },
+    {
+      "path": ".github/workflows/prepare-netlify.yml",
+      "bytes": 1390,
+      "sha256": "ef825c0f1558d56b1bcde5711d3e0038606b07281354995af8615e34af215729"
+    },
+    {
+      "path": ".github/workflows/validate-functions.yml",
+      "bytes": 2539,
+      "sha256": "6df2d0bf58d9569622fc0766985b3c01d884aab6cbb7f9853be04370a984e05a"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 77,
+      "sha256": "a31339f69a91c4724e46582ded6c90af95ab9d9463fd8c0c21f15ada0a3a5af2"
+    },
+    {
+      "path": "PAINEL_SETUP.txt",
+      "bytes": 489,
+      "sha256": "4cfc1dbc6f9277072b0f9dc43a90415b857fccd13e9390514f48ee1bcebb2dea"
+    },
+    {
+      "path": "PUBLICACAO-NETLIFY.md",
+      "bytes": 4634,
+      "sha256": "7d48971c02681215712acef754711a113d99e04c9ff839fe109b08fa8d50eb92"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 1214,
+      "sha256": "c8a0bf355de38277a26f15b2b0b6650b5f35eced55589e369729623479f666e2"
+    },
+    {
+      "path": "RECUPERACAO.md",
+      "bytes": 10219,
+      "sha256": "069bcc75d5f84c5859d18aeeb4fa791ce8bbf9f365d94b7576426679d8e851ee"
+    },
+    {
+      "path": "RELATORIO-TECNICO-FINAL.md",
+      "bytes": 12489,
+      "sha256": "0517a1740a760ccda25117b7686f0ccf1f3960788653b657df02e4ce7df5b173"
+    },
+    {
+      "path": "WHATSAPP_INTERNO_SETUP.txt",
+      "bytes": 1334,
+      "sha256": "db14313f87e3dd16ce12d7b5de0ac03bca389147c90f5b96ea9f2f46f85e3fa1"
+    },
+    {
+      "path": "WHATSAPP_SETUP.txt",
+      "bytes": 929,
+      "sha256": "19f0c067290639b7bb3f7d9afe911142cbeb08ad32fede386731840775d6f3c9"
+    },
+    {
+      "path": "exclusao-de-dados.html",
+      "bytes": 1860,
+      "sha256": "8f249051154715507b9c12285e81d16201df87561f71a7751b959c99a1b586aa"
+    },
+    {
+      "path": "index.html",
+      "bytes": 10126,
+      "sha256": "6ae03d45dbb2ca0b907166956983e13d9833bf3b5891fb4dda7143c971dfe048"
+    },
+    {
+      "path": "lib/conversation-store.mjs",
+      "bytes": 3504,
+      "sha256": "9d13228fd291dd922a7a3925bc20b23db09f470de27a0ab5d6cd7820a5956f3a"
+    },
+    {
+      "path": "lib/http.cjs",
+      "bytes": 4635,
+      "sha256": "a4c9e096826802f1fa0548abebad724e4365ccf7fd2e1897cb5fbb44e2c9c5d9"
+    },
+    {
+      "path": "lib/prompts.json",
+      "bytes": 6167,
+      "sha256": "bbd0bbed25e462af0d6332acb4c00733551f4cfd80d7f3d307343247b9f0931d"
+    },
+    {
+      "path": "lib/services.cjs",
+      "bytes": 2434,
+      "sha256": "7cd7fb23d50cbc78c3fb3d68a0aa593215e4e35132341a0638dde9c874bebe85"
+    },
+    {
+      "path": "netlify.toml",
+      "bytes": 573,
+      "sha256": "ee2e86bc177eb2788690db53895fb4998a0b4a104e71425bcefeda01ef5300b0"
+    },
+    {
+      "path": "netlify/functions/chat.js",
+      "bytes": 1198,
+      "sha256": "89903b1c21e556e84cfd7edea29968a1ddb4ac6bfcf1443932d01b76b202b3af"
+    },
+    {
+      "path": "netlify/functions/creative-preview.js",
+      "bytes": 2466,
+      "sha256": "b51bd323b38426cc5f076bff6571c5df4e9db5956c22c75bb439ae86dbabc9a1"
+    },
+    {
+      "path": "netlify/functions/health.js",
+      "bytes": 303,
+      "sha256": "03d7f09250430c7e1f984d04641c95b929b6fae9088e6c755db144a92204cee4"
+    },
+    {
+      "path": "netlify/functions/notify-idy-whatsapp.js",
+      "bytes": 1614,
+      "sha256": "b7f8f9da93225d47edd4bf7680c4acf870ec1d5b808ec59c7dc297061880598b"
+    },
+    {
+      "path": "netlify/functions/panel-api.mjs",
+      "bytes": 2448,
+      "sha256": "8f907d7a29fd578dde039b631604912bc10e930d7aeba40aefe30e76f63c5787"
+    },
+    {
+      "path": "netlify/functions/whatsapp-webhook.mjs",
+      "bytes": 5478,
+      "sha256": "aab776ebca9a77c68e16085d31ea346ff973b1adeab9812e48c82f4180cdaf2f"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 190799,
+      "sha256": "bf7d82d1de67288250a4130ef95f297ae581f4a8f72cfee7bfbdac605ea0749d"
+    },
+    {
+      "path": "package.json",
+      "bytes": 437,
+      "sha256": "2f4fa96d8b284559890d8c7b63a0c54b2fa5fe354c379bb2edd0ba5240a8c0db"
+    },
+    {
+      "path": "painel.html",
+      "bytes": 11540,
+      "sha256": "61c85d378dbc911c46d921bd8882b7b9c679a25b0a89a1549f29ccf0aab91d06"
+    },
+    {
+      "path": "politica-de-privacidade.html",
+      "bytes": 3655,
+      "sha256": "bd4386e176d0c88304cd34506b14e964a1df51c367441e951e329fed9f962b76"
+    },
+    {
+      "path": "recovery-evidence/comparison.json",
+      "bytes": 737,
+      "sha256": "9779d71532c5ce974a9f3484ecd0f48fed7956f9dd410fa3e688ca870e5237df"
+    },
+    {
+      "path": "recovery-evidence/functions-build.json",
+      "bytes": 1198,
+      "sha256": "430aa19e18734b15d5b4f4cdd317038e6839c7832e60c363d22b8024d51d3bbe"
+    },
+    {
+      "path": "recovery-evidence/original-files.json",
+      "bytes": 3851,
+      "sha256": "975705216312eabda75332a9670648b3ecd9544406a5cb3e7cd243c89f1a34df"
+    },
+    {
+      "path": "recovery-evidence/package-verification.json",
+      "bytes": 289,
+      "sha256": "e1d4c2b97e6120e8e13df69f74836f4a33e8432dc7df053a40ed344de91fd051"
+    },
+    {
+      "path": "recovery-evidence/test-results.json",
+      "bytes": 832,
+      "sha256": "2586c2db4cc3951789507bb0e4b9ce08316fed61307175e6c7965d234713d9a7"
+    },
+    {
+      "path": "scripts/build-functions.mjs",
+      "bytes": 2885,
+      "sha256": "53026f64c81c92c9432cff44d391c148eb9e1f1210044bc1c8b23fa4b7cab888"
+    },
+    {
+      "path": "scripts/build.mjs",
+      "bytes": 585,
+      "sha256": "6febe823ec8b00c355f90abb10d9162cf7a23dac5a74f77304434dc11ae13449"
+    },
+    {
+      "path": "scripts/check.mjs",
+      "bytes": 1008,
+      "sha256": "d614909a5c66d58d6dfdeaccd6d312be7d892107c343b7181c6cabea302d904e"
+    },
+    {
+      "path": "scripts/netlify-preflight.mjs",
+      "bytes": 4385,
+      "sha256": "792fe64757c2fa7b0a7d738c887620a20f6ab752d8af23494c9703c6d2e0161d"
+    },
+    {
+      "path": "scripts/update-manifest.mjs",
+      "bytes": 840,
+      "sha256": "61e7d23cc9bfd46743c528d9c24c9a5f4f0924ad7380d6cb1532fca3d30e683a"
+    },
+    {
+      "path": "tests/backend.test.mjs",
+      "bytes": 18868,
+      "sha256": "39b374bf71046759377f5b1fbfca04b86cfacb6e6df8218ee76ede515ba0a9e1"
+    },
+    {
+      "path": "tests/browser-smoke.py",
+      "bytes": 7250,
+      "sha256": "1d63894d27865dac2c7ae34960b8490b549adadc5d21e8273445810393634de3"
+    },
+    {
+      "path": "tests/frontend.test.mjs",
+      "bytes": 5642,
+      "sha256": "2c1f71467f256ac0d15f6476cc1ee01376c0b0b013c53766e1cef3306d812dc4"
+    },
+    {
+      "path": "tests/run.mjs",
+      "bytes": 59,
+      "sha256": "dd0bb5fe3ff7a70cc7eadb0c13d7b8a06288ca19200bc75be301935042251be9"
+    }
+  ],
+  "manifest_excludes_itself": true
+}
