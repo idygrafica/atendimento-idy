@@ -9,9 +9,14 @@
       "sha256": "c8db9fc4b8192fdd59ca23840df5aaa8393a7909fdeb8fa0a8f044a4214b12b3"
     },
     {
+      "path": ".github/workflows/prepare-netlify.yml",
+      "bytes": 1364,
+      "sha256": "c3bb6fc58f9138249f45412b522b9389fdc35bd449b8ab880008cbe6b64d6216"
+    },
+    {
       "path": ".github/workflows/validate-functions.yml",
-      "bytes": 2325,
-      "sha256": "c56ec91fab3bdab2c975f7c46ad148492c69629b12c53b4d2c564c6f75f61259"
+      "bytes": 2539,
+      "sha256": "6df2d0bf58d9569622fc0766985b3c01d884aab6cbb7f9853be04370a984e05a"
     },
     {
       "path": ".gitignore",
@@ -22,6 +27,11 @@
       "path": "PAINEL_SETUP.txt",
       "bytes": 489,
       "sha256": "4cfc1dbc6f9277072b0f9dc43a90415b857fccd13e9390514f48ee1bcebb2dea"
+    },
+    {
+      "path": "PUBLICACAO-NETLIFY.md",
+      "bytes": 4513,
+      "sha256": "de1d3a492047d1c3e95ec574707026955d443681dbc599db0fbe84c7cd04eeaf"
     },
     {
       "path": "README.txt",
@@ -172,6 +182,11 @@
       "path": "scripts/check.mjs",
       "bytes": 1008,
       "sha256": "d614909a5c66d58d6dfdeaccd6d312be7d892107c343b7181c6cabea302d904e"
+    },
+    {
+      "path": "scripts/netlify-preflight.mjs",
+      "bytes": 4379,
+      "sha256": "4efe255c4ff0b99632b72fc450e16ba1781cab3255bef0dc9df5687e671e3fb2"
     },
     {
       "path": "scripts/update-manifest.mjs",

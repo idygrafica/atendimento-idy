@@ -3,6 +3,12 @@ name: Validate recovered Functions
 on:
   push:
     branches: [recuperacao-atendimento-ia]
+    paths-ignore:
+      - '.github/workflows/prepare-netlify.yml'
+      - '.github/workflows/validate-functions.yml'
+      - 'scripts/netlify-preflight.mjs'
+      - 'PUBLICACAO-NETLIFY.md'
+      - 'MANIFESTO.json'
 
 permissions:
   contents: read

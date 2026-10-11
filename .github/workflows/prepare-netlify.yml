@@ -1,0 +1,42 @@
+name: Prepare existing Netlify publication
+
+on:
+  push:
+    branches: [recuperacao-atendimento-ia]
+    paths:
+      - '.github/workflows/prepare-netlify.yml'
+      - 'scripts/netlify-preflight.mjs'
+      - 'PUBLICACAO-NETLIFY.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: netlify-preparation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/recuperacao-atendimento-ia'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Check deploy access and record previous deploy without publishing
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
+        run: node scripts/netlify-preflight.mjs
+      - name: Preserve preparation report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: netlify-preparation-${{ github.run_id }}
+          path: .netlify/publication-preparation.json
+          if-no-files-found: error
+          retention-days: 30
