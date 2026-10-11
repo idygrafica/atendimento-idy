@@ -17,7 +17,7 @@ A `META_APP_SECRET` já cadastrada no Netlify é usada pelo webhook. As variáve
 
 ## Resultado e restauração
 
-O workflow verifica presença das duas configurações, acesso ao projeto exato e ausência de repositório vinculado. Se houver acesso, consulta o deploy publicado anterior e registra ID e link em `netlify-preparation-<run_id>`, artefato com retenção de 30 dias. O relatório contém apenas presença de credenciais e metadados permitidos, sem valores secretos. Ainda é necessário preservar o deploy antigo no Netlify; o artefato de metadados não é uma cópia do deploy.
+O workflow verifica presença das duas configurações, acesso de leitura ao projeto exato e ausência de repositório vinculado. Se houver acesso, consulta o deploy publicado anterior e registra ID e link em `netlify-preparation-<run_id>-<attempt>`, artefato com retenção de 30 dias e nome distinto para cada tentativa. O relatório contém apenas presença de credenciais e metadados permitidos, sem valores secretos. Ainda é necessário preservar o deploy antigo no Netlify; o artefato de metadados não é uma cópia do deploy. A consulta de leitura não comprova permissão de publicação.
 
 Sem autenticação ou deploy anterior recuperável, a preparação termina com o motivo do bloqueio e nenhuma publicação. Ausência no workflow não comprova ausência em todos os escopos GitHub.
 

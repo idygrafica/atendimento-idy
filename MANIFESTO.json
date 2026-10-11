@@ -10,8 +10,8 @@
     },
     {
       "path": ".github/workflows/prepare-netlify.yml",
-      "bytes": 1364,
-      "sha256": "c3bb6fc58f9138249f45412b522b9389fdc35bd449b8ab880008cbe6b64d6216"
+      "bytes": 1390,
+      "sha256": "ef825c0f1558d56b1bcde5711d3e0038606b07281354995af8615e34af215729"
     },
     {
       "path": ".github/workflows/validate-functions.yml",
@@ -30,8 +30,8 @@
     },
     {
       "path": "PUBLICACAO-NETLIFY.md",
-      "bytes": 4513,
-      "sha256": "de1d3a492047d1c3e95ec574707026955d443681dbc599db0fbe84c7cd04eeaf"
+      "bytes": 4634,
+      "sha256": "7d48971c02681215712acef754711a113d99e04c9ff839fe109b08fa8d50eb92"
     },
     {
       "path": "README.txt",
@@ -185,8 +185,8 @@
     },
     {
       "path": "scripts/netlify-preflight.mjs",
-      "bytes": 4379,
-      "sha256": "4efe255c4ff0b99632b72fc450e16ba1781cab3255bef0dc9df5687e671e3fb2"
+      "bytes": 4385,
+      "sha256": "792fe64757c2fa7b0a7d738c887620a20f6ab752d8af23494c9703c6d2e0161d"
     },
     {
       "path": "scripts/update-manifest.mjs",

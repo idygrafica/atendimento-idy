@@ -48,7 +48,7 @@ try {
   report.previous_deploy = { id: previousID, project: 'atendimento-idy', state: 'ready', url: `https://${previousID}--atendimento-idy.netlify.app` };
   report.checks.push('Deploy publicado anterior identificado para restauração.');
   report.checks.push('META_APP_SECRET cadastrada no Netlify conforme confirmação do proprietário; valores não consultados.');
-  report.result = 'deploy_access_confirmed';
+  report.result = 'project_read_access_confirmed';
   report.pending = ['Confirmar demais configurações Production/Functions na conta Netlify.', 'Obter autorização explícita para publicar.', 'Reconfirmar e registrar deploy anterior imediatamente antes da publicação.'];
 } catch (error) {
   // Nunca imprimir respostas da API, credenciais, valores de variáveis ou erros arbitrários.
