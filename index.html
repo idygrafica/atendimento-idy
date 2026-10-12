@@ -7,8 +7,8 @@
   <style>
     :root{--navy:#0b1f33;--green:#33a852;--bg:#f5f7f9;--card:#fff;--muted:#6b7280;--line:#dde3e8}
     *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#172033}
-    .wrap{max-width:860px;margin:0 auto;padding:24px}.top{background:#fff;border-bottom:4px solid var(--green)}
-    .brand{display:flex;align-items:center;gap:12px;padding:18px 24px;max-width:860px;margin:auto}.logo{font-size:28px;font-weight:800;color:var(--navy)}.logo b{color:var(--green)}
+    .wrap{max-width:1180px;margin:0 auto;padding:24px}.top{background:#fff;border-bottom:4px solid var(--green)}
+    .brand{display:flex;align-items:center;gap:16px;padding:18px 24px;max-width:1180px;margin:auto}.logo{display:block;width:160px;max-width:45%;flex-shrink:0}.logo img{display:block;width:100%;height:auto}
     .sub{color:var(--muted);font-size:14px}.panel{background:var(--card);border:1px solid var(--line);min-height:560px;display:flex;flex-direction:column}
     #chat{flex:1;padding:20px;overflow:auto;display:flex;flex-direction:column;gap:12px}.msg{max-width:82%;padding:12px 14px;line-height:1.45;white-space:pre-wrap}
     .bot{align-self:flex-start;background:#edf2f6}.user{align-self:flex-end;background:var(--navy);color:#fff}.status{font-size:12px;color:var(--muted);padding:0 20px 10px}
@@ -19,24 +19,44 @@
     .diagnostic{margin-top:14px;font-size:13px;color:var(--muted)}.diagnostic button{background:var(--navy);padding:9px 12px;margin-right:8px}
     .wa-action{display:inline-block;margin-top:10px;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:11px 14px}
     dialog{border:0;padding:0;max-width:520px;width:calc(100% - 30px);box-shadow:0 20px 60px #0004}dialog::backdrop{background:#0007}.modal{padding:22px;background:#fff}.modal h2{margin:0 0 6px}.modal p{color:var(--muted);margin:0 0 18px}.field{margin:12px 0}.field label{display:block;font-weight:700;margin-bottom:6px}.field input{width:100%;padding:12px;border:1px solid #cfd7df;font:inherit}.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}.actions button{padding:12px 16px}.secondary{background:#e5e7eb;color:#172033}
-    @media(max-width:640px){.wrap{padding:0}.panel{border-left:0;border-right:0}.msg{max-width:92%}.composer{grid-template-columns:auto 1fr}.composer #send{grid-column:1/3;height:46px}.leadbar{padding-bottom:12px}.leadbtn{width:100%}}
+    .attendance-layout{display:grid;grid-template-columns:minmax(260px,405px) minmax(0,1fr);gap:28px;align-items:start}.attendance-content{min-width:0}.attendance-mascot{position:sticky;top:24px;align-self:start}.attendance-mascot img{display:block;width:405px;max-width:100%;height:auto}.start-screen input{min-width:0}.start-screen{overflow-wrap:anywhere}
+    [hidden]{display:none!important}.start-screen{background:var(--card);border:1px solid var(--line);padding:28px;max-width:560px;margin:0 auto}.start-screen h1{font-size:26px;margin:0 0 12px}.start-screen p{line-height:1.5;color:var(--muted)}.start-screen button{padding:14px 18px;width:100%;margin-top:12px}.start-error{color:#b42318!important;min-height:20px;margin:12px 0 0}.contact-summary{white-space:pre-wrap;overflow-wrap:anywhere}
+    @media(max-width:780px){.attendance-layout{grid-template-columns:minmax(0,1fr);gap:16px}.attendance-mascot{position:static;justify-self:start}.attendance-mascot img{width:405px;max-width:100%;height:auto}.attendance-content{width:100%}}
+    @media(max-width:640px){.wrap{padding:0}.start-screen{padding:22px;border-left:0;border-right:0}.panel{border-left:0;border-right:0}.msg{max-width:92%}.composer{grid-template-columns:auto 1fr}.composer #send{grid-column:1/3;height:46px}.leadbar{padding-bottom:12px}.leadbtn{width:100%}}
   </style>
 </head>
 <body>
-  <div class="top"><div class="brand"><div class="logo">IDY <b>GRÁFICA</b></div><div class="sub">Atendimento online</div></div></div>
+  <div class="top"><div class="brand"><a class="logo" href="https://idygrafica.netlify.app/" aria-label="Site da IDY Gráfica"><img src="https://idygrafica.netlify.app/assets/logo-idy-grafica.png" alt="IDY Gráfica — Impressos em geral" width="160" /></a><div class="sub">Atendimento online</div></div></div>
   <div class="wrap">
-    <div class="panel">
-      <div id="chat"><div class="msg bot">Olá! Sou o atendimento virtual da IDY Gráfica. O que você precisa?</div></div>
+    <div class="attendance-layout">
+    <aside class="attendance-mascot"><img src="https://idygrafica.netlify.app/assets/mascote-idy.png" alt="Mascote original da IDY Gráfica" width="1024" height="1536" /></aside>
+    <div class="attendance-content">
+    <section id="startScreen" class="start-screen" aria-labelledby="startTitle">
+      <h1 id="startTitle">Vamos começar seu orçamento?</h1>
+      <p>Informe seus dados para iniciar o atendimento com a IA da IDY Gráfica.</p>
+      <form id="startForm">
+        <div class="field"><label for="clientName">Nome</label><input id="clientName" autocomplete="name" maxlength="120" required /></div>
+        <div class="field"><label for="clientEmail">E-mail</label><input id="clientEmail" type="email" autocomplete="email" maxlength="254" required /></div>
+        <div class="field"><label for="clientPhone">Telefone / WhatsApp</label><input id="clientPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="(51) 99999-9999" required /></div>
+        <p>Ao finalizar, você poderá enviar sua conversa e os arquivos à equipe da IDY para receber o retorno.</p>
+        <p id="startError" class="start-error" role="alert" aria-live="polite"></p>
+        <button id="startButton" type="submit">Iniciar atendimento</button>
+      </form>
+    </section>
+    <div id="chatPanel" class="panel" hidden>
+      <div id="chat" role="log" aria-live="polite"></div>
       <div id="status" class="status">Pronto.</div>
       <div id="filetag" class="filetag"></div>
       <div class="composer">
         <button class="attach" id="attach" title="Anexar arte ou logo">📎</button>
-        <textarea id="message" placeholder="Digite sua mensagem..."></textarea>
-        <button id="send">Enviar</button>
+        <textarea id="message" placeholder="Digite sua mensagem..." disabled></textarea>
+        <button id="send" disabled>Enviar</button>
       </div>
       <div class="leadbar"><button id="lead" class="leadbtn">Enviar atendimento para a IDY</button></div>
     </div>
     <div class="diagnostic"><button id="health">Testar conexão</button><span id="healthResult"></span></div>
+    </div>
+    </div>
   </div>
 
   <input id="fileInput" type="file" accept=".pdf,.png,.jpg,.jpeg" hidden />
@@ -44,9 +64,8 @@
   <dialog id="leadDialog">
     <div class="modal">
       <h2>Enviar atendimento para a IDY</h2>
-      <p>Informe seus dados para a gráfica retornar o contato.</p>
-      <div class="field"><label for="clientName">Nome</label><input id="clientName" autocomplete="name" /></div>
-      <div class="field"><label for="clientPhone">WhatsApp</label><input id="clientPhone" inputmode="tel" autocomplete="tel" placeholder="(51) 99999-9999" /></div>
+      <p>Confira seus dados. Sua conversa e o arquivo selecionado serão enviados à equipe da IDY Gráfica.</p>
+      <p id="contactSummary" class="contact-summary"></p>
       <div id="dialogFile" class="filetag" style="padding:0"></div>
       <div class="actions"><button id="cancelLead" class="secondary">Cancelar</button><button id="submitLead">Enviar para a IDY</button></div>
     </div>
@@ -55,6 +74,7 @@
   <!-- Formulário estático para a Netlify detectar e armazenar os atendimentos -->
   <form name="atendimento-idy" data-netlify="true" enctype="multipart/form-data" hidden>
     <input type="text" name="nome" />
+    <input type="email" name="email" />
     <input type="text" name="whatsapp" />
     <textarea name="resumo"></textarea>
     <input type="file" name="arte" />
@@ -72,6 +92,28 @@ const dialogFile=document.getElementById('dialogFile');
 const leadDialog=document.getElementById('leadDialog');
 const history=[];
 let selectedFile=null;
+let clientContact=null;
+let asking=false;
+
+document.getElementById('startForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  if(clientContact)return;
+  const nome=document.getElementById('clientName').value.trim();
+  const email=document.getElementById('clientEmail').value.trim();
+  const whatsapp=document.getElementById('clientPhone').value.trim();
+  const phoneDigits=whatsapp.replace(/\D/g,'');
+  const error=document.getElementById('startError');
+  if(!nome){error.textContent='Informe seu nome.';document.getElementById('clientName').focus();return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){error.textContent='Informe um e-mail válido.';document.getElementById('clientEmail').focus();return;}
+  if(phoneDigits.length<10||phoneDigits.length>15){error.textContent='Informe um telefone válido com DDD.';document.getElementById('clientPhone').focus();return;}
+  clientContact={nome,email,whatsapp};
+  error.textContent='';
+  document.getElementById('startScreen').hidden=true;
+  document.getElementById('chatPanel').hidden=false;
+  input.disabled=false;send.disabled=false;
+  addMsg('Olá, '+nome+'! Sou o atendimento virtual da IDY Gráfica. O que você precisa?');
+  input.focus();
+});
 
 function addMsg(text,who='bot'){
   const el=document.createElement('div');el.className='msg '+who;
@@ -85,36 +127,41 @@ function addMsg(text,who='bot'){
 }
 
 async function ask(){
-  const text=input.value.trim();if(!text)return;
+  const text=input.value.trim();if(!clientContact||!text||asking)return;asking=true;
   addMsg(text,'user');history.push({role:'user',content:text});input.value='';send.disabled=true;statusEl.textContent='Respondendo...';
   try{
     const r=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
     const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`HTTP ${r.status}`);
     const answer=data.answer||'Não consegui gerar uma resposta.';addMsg(answer,'bot');history.push({role:'assistant',content:answer});statusEl.textContent='Pronto.';
-  }catch(e){addMsg('Erro de conexão: '+e.message,'bot');statusEl.textContent='Falha na conexão.';}finally{send.disabled=false;input.focus();}
+  }catch(e){addMsg('Erro de conexão: '+e.message,'bot');statusEl.textContent='Falha na conexão.';}finally{asking=false;send.disabled=false;input.focus();}
 }
 
 send.addEventListener('click',ask);input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask();}});
 
-document.getElementById('attach').addEventListener('click',()=>fileInput.click());
+document.getElementById('attach').addEventListener('click',()=>{if(clientContact)fileInput.click();});
 fileInput.addEventListener('change',()=>{
+  if(!clientContact)return;
   const f=fileInput.files?.[0];if(!f)return;
   if(f.size>8*1024*1024){alert('O arquivo pode ter no máximo 8 MB.');fileInput.value='';return;}
   selectedFile=f;filetag.textContent='📎 Arte selecionada: '+f.name;dialogFile.textContent='📎 Arte: '+f.name;addMsg('Arte anexada: '+f.name,'user');history.push({role:'user',content:'O cliente anexou uma arte/arquivo chamado '+f.name+'.'});
 });
 
-document.getElementById('lead').addEventListener('click',()=>leadDialog.showModal());
+document.getElementById('lead').addEventListener('click',()=>{
+  if(!clientContact)return;
+  const {nome,email,whatsapp}=clientContact;
+  document.getElementById('contactSummary').textContent=nome+'\n'+email+'\n'+whatsapp;
+  leadDialog.showModal();
+});
 document.getElementById('cancelLead').addEventListener('click',()=>leadDialog.close());
 
 document.getElementById('submitLead').addEventListener('click',async()=>{
-  const nome=document.getElementById('clientName').value.trim();
-  const whatsapp=document.getElementById('clientPhone').value.trim();
-  if(!nome){alert('Informe seu nome.');return;}
-  if(!whatsapp){alert('Informe seu WhatsApp.');return;}
-  const btn=document.getElementById('submitLead');btn.disabled=true;btn.textContent='Enviando...';
+  const btn=document.getElementById('submitLead');if(!clientContact||btn.disabled||asking)return;
+  const {nome,email,whatsapp}=clientContact;
+  btn.disabled=true;btn.textContent='Enviando...';
   try{
-    const resumo=history.map(m=>(m.role==='user'?'CLIENTE: ':'ATENDENTE: ')+m.content).join('\n\n');
-    const fd=new FormData();fd.append('form-name','atendimento-idy');fd.append('nome',nome);fd.append('whatsapp',whatsapp);fd.append('resumo',resumo||'Atendimento sem histórico.');if(selectedFile)fd.append('arte',selectedFile,selectedFile.name);
+    const conversation=history.map(m=>(m.role==='user'?'CLIENTE: ':'ATENDENTE: ')+m.content).join('\n\n');
+    const resumo='Cliente: '+nome+'\nE-mail: '+email+'\nWhatsApp: '+whatsapp+'\n\n'+(conversation||'Atendimento sem histórico.');
+    const fd=new FormData();fd.append('form-name','atendimento-idy');fd.append('nome',nome);fd.append('email',email);fd.append('whatsapp',whatsapp);fd.append('resumo',resumo);if(selectedFile)fd.append('arte',selectedFile,selectedFile.name);
     const r=await fetch('/',{method:'POST',body:fd});if(!r.ok)throw new Error('Não foi possível registrar o atendimento.');
 
     // Além de registrar o atendimento na Netlify (e manter o e-mail como segurança),
@@ -141,3 +188,4 @@ document.getElementById('health').addEventListener('click',async()=>{healthResul
 </script>
 </body>
 </html>
+

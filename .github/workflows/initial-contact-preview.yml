@@ -1,0 +1,62 @@
+name: Preview initial contact screen
+on:
+  push:
+    branches: [codex/tela-inicial-atendimento]
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check flow
+        run: node flow.test.mjs
+      - name: Install browser
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Check layout and preview without sending real requests
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs'),http=require('http'),assert=require('assert/strict');
+          (async()=>{
+            const html=fs.readFileSync('index.html','utf8');let calls=0,formBody='';
+            const server=http.createServer((req,res)=>{
+              if(req.method==='GET'){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(html)}
+              let body='';req.on('data',c=>body+=c);req.on('end',()=>{
+                if(req.url==='/'){formBody=body;return res.end('Registrado')}
+                res.setHeader('Content-Type','application/json');
+                if(req.url==='/.netlify/functions/chat'){calls++;return res.end(JSON.stringify({answer:'Vamos preparar seus cartões. Qual acabamento você deseja?'}))}
+                res.end(JSON.stringify({ok:true}));
+              });
+            });await new Promise(resolve=>server.listen(8787,'127.0.0.1',resolve));
+            const browser=await chromium.launch();
+            for(const width of [320,390,780,1024,1280]){
+              const page=await browser.newPage({viewport:{width,height:900}});await page.goto('http://127.0.0.1:8787/');
+              await page.evaluate(()=>Promise.all([...document.images].map(e=>e.decode())));
+              assert(await page.locator('#startScreen').isVisible());assert(!(await page.locator('#chatPanel').isVisible()));
+              const layout=await page.evaluate(()=>{
+                const m=document.querySelector('.attendance-mascot img'),f=document.querySelector('#startScreen'),logo=document.querySelector('.logo img'),mr=m.getBoundingClientRect(),fr=f.getBoundingClientRect();
+                return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,mascotWidth:mr.width,mascotHeight:mr.height,mascotLoaded:m.naturalWidth>0,logoLoaded:logo.naturalWidth>0,overlap:mr.left<fr.right&&mr.right>fr.left&&mr.top<fr.bottom&&mr.bottom>fr.top,mascotLeftOfForm:mr.right<=fr.left};
+              });
+              assert.equal(layout.scrollWidth,width);assert(layout.mascotLoaded&&layout.logoLoaded);assert(!layout.overlap);if(width>780){assert(layout.mascotLeftOfForm);assert.equal(layout.mascotWidth,405)}
+              if(width===1280||width===390)console.log('INITIAL_PREVIEW_'+width+' '+(await page.screenshot({type:'jpeg',quality:75,fullPage:true})).toString('base64'));
+              await page.locator('#clientName').fill('Cliente de teste');await page.locator('#clientEmail').fill('cliente@example.invalid');await page.locator('#clientPhone').fill('(51) 99999-0000');
+              const before=calls;await page.locator('#startButton').click();assert.equal(calls,before);assert(await page.locator('#chatPanel').isVisible());assert(!(await page.locator('#startScreen').isVisible()));
+              await page.locator('#message').fill('Quero 500 cartões');await page.locator('#send').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Pronto.');assert.equal(calls,before+1);
+              const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert(!overflow);
+              await page.locator('#fileInput').setInputFiles({name:'arte-teste.pdf',mimeType:'application/pdf',buffer:Buffer.from('arquivo de teste')});
+              await page.locator('#lead').click();assert((await page.locator('#contactSummary').innerText()).includes('cliente@example.invalid'));
+              await page.locator('#submitLead').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Atendimento enviado para a IDY.');
+              assert(formBody.includes('cliente@example.invalid'));assert(formBody.includes('arte-teste.pdf'));
+              console.log('INITIAL_FLOW_VERIFIED '+JSON.stringify({...layout,contactGatesChat:true,contactsAndAttachmentSubmitted:true}));await page.close();
+            }
+            const request=await browser.newPage(),live=await request.request.get('https://atendimento-idy.netlify.app/');
+            const text=await live.text();console.log('CURRENT_LIVE_SOURCE '+JSON.stringify({status:live.status(),hasOnboarding:text.includes('id="startScreen"'),hasChat:text.includes('id="chat"'),bytes:text.length}));
+            await browser.close();await new Promise(resolve=>server.close(resolve));console.log('DRAFT_PREVIEW_VERIFIED');
+          })().catch(error=>{console.error(error);process.exit(1)});
+          JS
