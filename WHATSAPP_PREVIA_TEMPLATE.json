@@ -1,0 +1,20 @@
+{
+  "name": "idy_previa_arte_responsavel",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "IMAGE",
+      "example": { "header_handle": ["SUBSTITUIR_PELO_HANDLE_DA_IMAGEM_DE_EXEMPLO_NA_META"] }
+    },
+    {
+      "type": "BODY",
+      "text": "Prévia de arte gerada no atendimento da IDY Gráfica.\nCliente: {{1}}\nTelefone: {{2}}\nProduto/serviço: {{3}}\nQuantidade: {{4}}\nValor informado no orçamento: {{5}}\nAtendimento: {{6}}\nData e hora: {{7}}\nEsta é uma notificação da prévia já gerada, sem solicitação de autorização para a geração.",
+      "example": {
+        "body_text": [["Cliente de exemplo", "(51) 99999-0000", "Cartões de visita", "500", "R$ 85,00", "12345678-1234-4234-8234-123456789abc", "12/10/2026, 11:00:00 (America/Sao_Paulo)"]]
+      }
+    },
+    { "type": "FOOTER", "text": "O arquivo final para impressão depende de aprovação humana." }
+  ]
+}

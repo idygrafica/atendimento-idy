@@ -3,15 +3,17 @@ import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
 import {createArtworkHandler} from './lib/artwork.mjs';
 import {createQuota,quotaLimits,dayWindow} from './lib/artwork-quota.mjs';
-import {MemoryStore} from './test-store.mjs';
+import {MemoryStore,testAttendance} from './test-store.mjs';
 
 const env={OPENAI_API_KEY:'mock-key'},png=Buffer.from([137,80,78,71,13,10,26,10,0,1]).toString('base64');
 const completed={status:'completed',output:[{type:'image_generation_call',result:png}]};
-const request=(method,ticket)=>new Request('https://example.invalid/.netlify/functions/artwork',{method,headers:{Origin:'https://example.invalid','Content-Type':'application/json',...(ticket?{Authorization:'Bearer '+ticket}:{})},...(method==='POST'?{body:JSON.stringify({mode:'create',brief:'Crie uma arte fictícia para teste.'})}:{})});
+const request=(method,ticket,attendanceTicket)=>new Request('https://example.invalid/.netlify/functions/artwork',{method,headers:{Origin:'https://example.invalid','Content-Type':'application/json',...(ticket?{Authorization:'Bearer '+ticket}:{})},...(method==='POST'?{body:JSON.stringify({mode:'create',brief:'Crie uma arte fictícia para teste.',attendanceTicket})}:{})});
 function setup({fetchImpl,clock=Date.parse('2026-10-12T12:00:00Z'),config={},store=new MemoryStore()}={}){
   let stamp=clock,calls=0;const fetcher=fetchImpl||(async(url,options)=>options.method==='POST'?Response.json({id:'resp_job'+(++calls)}):Response.json(options.method==='DELETE'?{deleted:true}:completed));
-  const handler=createArtworkHandler({env:{...env,...config},fetchImpl:fetcher,storeFactory:async()=>store,now:()=>stamp});
-  return {store,handler,setTime:value=>stamp=Date.parse(value),now:()=>stamp,calls:()=>calls,post:ip=>handler(request('POST'),{ip:ip||'ip-a'}),poll:ticket=>handler(request('GET',ticket))};
+  const attendance=new MemoryStore(),notifications=new MemoryStore();
+  const handler=createArtworkHandler({env:{...env,...config},fetchImpl:fetcher,storeFactory:async()=>store,attendanceStoreFactory:async()=>attendance,notificationStoreFactory:async()=>notifications,now:()=>stamp});
+  const post=async ip=>handler(request('POST',null,await testAttendance(attendance,env.OPENAI_API_KEY,{now:stamp})),{ip:ip||'ip-a'});
+  return {store,handler,setTime:value=>stamp=Date.parse(value),now:()=>stamp,calls:()=>calls,post,poll:ticket=>handler(request('GET',ticket))};
 }
 async function finish(f,ip){const r=await f.post(ip);assert.equal(r.status,202);const ticket=(await r.json()).ticket;assert.equal((await f.poll(ticket)).status,200);return ticket;}
 const ledger=f=>[...f.store.values.entries()].find(([key])=>key.startsWith('quota-v2/'))?.[1]?.data;

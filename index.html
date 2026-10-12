@@ -24,6 +24,7 @@
     @media(prefers-reduced-motion:reduce){.composer button{transition:none}}
     .msg{overflow-wrap:anywhere}.art-preview{display:block;width:auto;max-width:min(280px,100%);max-height:240px;height:auto;object-fit:contain;margin-top:10px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:#fff}
     .art-tools{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 16px;background:#fff}.art-tools button{padding:10px 12px;border:1px solid #c6dfd0;border-radius:12px;background:#eaf4ee;color:#176333;font-size:12px;min-height:44px}.art-tools button:focus-visible{outline:3px solid #0b1f33;outline-offset:3px}.proposal-download{display:inline-block;margin-top:10px;color:#176333;font-weight:700;text-decoration:underline}.art-tools small{width:100%;color:var(--muted);line-height:1.4}
+    .human-contact{padding:8px 16px 14px;background:#fff}.human-contact a{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:12px 16px;border:2px solid #1db954;border-radius:14px;color:#063d20;background:#25d366;font-weight:700;text-decoration:none;line-height:1.35;text-align:center;overflow-wrap:anywhere;box-shadow:0 4px 12px rgba(37,211,102,.2)}.human-contact a:hover{background:#20c45c;box-shadow:0 6px 16px rgba(37,211,102,.28)}.human-contact a:focus-visible{outline:3px solid #0b1f33;outline-offset:3px}.human-contact svg{width:24px;height:24px;flex-shrink:0;color:#fff}
     [hidden]{display:none!important}.start-screen{background:var(--card);border:1px solid var(--line);padding:28px;max-width:560px;margin:0 auto}.start-screen h1{font-size:26px;margin:0 0 12px}.start-screen p{line-height:1.5;color:var(--muted)}.start-screen button{padding:14px 18px;width:100%;margin-top:12px}.start-error{color:#b42318!important;min-height:20px;margin:12px 0 0}.contact-summary{white-space:pre-wrap;overflow-wrap:anywhere}
     @media(max-width:780px){.attendance-layout{grid-template-columns:minmax(0,1fr);gap:16px}.attendance-mascot{position:static;justify-self:start}.attendance-mascot img{width:405px;max-width:100%;height:auto}.attendance-content{width:100%}}
     @media(max-width:640px){.wrap{padding:0}.start-screen{padding:22px;border-left:0;border-right:0}.panel{border-left:0;border-right:0}.msg{max-width:92%}.composer{grid-template-columns:auto 1fr}.composer #send{grid-column:1/3;height:46px}.leadbar{padding-bottom:12px}.leadbtn{width:100%}}
@@ -42,7 +43,7 @@
         <div class="field"><label for="clientName">Nome</label><input id="clientName" autocomplete="name" maxlength="120" required /></div>
         <div class="field"><label for="clientEmail">E-mail</label><input id="clientEmail" type="email" autocomplete="email" maxlength="254" required /></div>
         <div class="field"><label for="clientPhone">Telefone / WhatsApp</label><input id="clientPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="(51) 99999-9999" required /></div>
-        <p>Seus contatos e a conversa serão salvos para a equipe da IDY. Se você ficar 10 minutos sem atividade, a gráfica receberá um aviso para ajudar a continuar o atendimento. Os arquivos só serão enviados quando você confirmar o encaminhamento na conversa.</p>
+        <p>Seus contatos e a conversa serão salvos para a equipe da IDY. Se você ficar 10 minutos sem atividade, a gráfica receberá um aviso para ajudar a continuar o atendimento. Ao gerar sua única prévia de arte, a imagem e o resumo do orçamento serão enviados automaticamente ao responsável. Seu arquivo original só será encaminhado quando você confirmar na conversa.</p>
         <p id="startError" class="start-error" role="alert" aria-live="polite"></p>
         <button id="startButton" type="submit">Iniciar atendimento</button>
       </form>
@@ -52,12 +53,14 @@
       <div id="status" class="status">Pronto.</div>
       <div id="filetag" class="filetag"></div>
       <div id="saveStatus" class="status" role="status"></div>
+      <div id="artworkNotice" class="status" role="status" hidden></div>
+      <div class="human-contact"><a id="humanContact" href="https://wa.me/5551981687562?text=Ol%C3%A1!%20Vim%20pelo%20Atendimento%20com%20IA%20da%20IDY%20Gr%C3%A1fica%20e%20gostaria%20de%20falar%20com%20um%20atendente." target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg><span>Falar com atendimento humano</span></a></div>
       <div class="composer">
         <button class="attach" id="attach" type="button" title="Anexar arte ou logo" aria-label="Anexar arte ou logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.5 6.5-7 7a3.5 3.5 0 0 0 5 5L20 10a5 5 0 0 0-7-7L4.5 11.5a6.5 6.5 0 0 0 9 9l6-6"/></svg></button>
         <textarea id="message" placeholder="Digite sua mensagem..." disabled></textarea>
         <button id="send" type="button" aria-label="Enviar mensagem" disabled><span>Enviar</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 3-6 18-4-8-8-4Z"/><path d="m21 3-10 10"/></svg></button>
       </div>
-      <div class="art-tools"><button id="createArtwork" type="button" disabled>Criar proposta de arte</button><button id="improveArtwork" type="button" disabled>Melhorar minha arte</button><small>Peça uma proposta visual ou mudanças na imagem. As prévias precisam de conferência da IDY antes da produção.</small></div>
+      <div class="art-tools"><button id="createArtwork" type="button" disabled>Criar proposta de arte</button><button id="improveArtwork" type="button" disabled>Melhorar minha arte</button><small>Uma prévia automática por atendimento. Para novas propostas ou ajustes, fale com o atendimento humano. O arquivo final para impressão precisa de aprovação humana.</small></div>
     </div>
     <div class="diagnostic"><button id="health">Testar conexão</button><span id="healthResult"></span></div>
     </div>
@@ -101,6 +104,7 @@ let proposalUrl=null;
 let proposalImage=null;
 let proposalDownload=null;
 let artworkBusy=false;
+let previewUsed=false;
 let partialTicket=null;
 let partialStartId=null;
 let partialSequence=0;
@@ -109,7 +113,7 @@ const saveStatus=document.getElementById('saveStatus');
 const createArtworkButton=document.getElementById('createArtwork');
 const improveArtworkButton=document.getElementById('improveArtwork');
 
-document.getElementById('startForm').addEventListener('submit',event=>{
+document.getElementById('startForm').addEventListener('submit',async event=>{
   event.preventDefault();
   if(clientContact)return;
   const nome=document.getElementById('clientName').value.trim();
@@ -122,6 +126,17 @@ document.getElementById('startForm').addEventListener('submit',event=>{
   if(phoneDigits.length<10||phoneDigits.length>15){error.textContent='Informe um telefone válido com DDD.';document.getElementById('clientPhone').focus();return;}
   clientContact={nome,email,whatsapp};
   partialStartId=crypto.randomUUID();
+  const previous=loadAttendanceSession();
+  if(previous&&JSON.stringify(previous.contact)===JSON.stringify(clientContact)){
+    partialTicket=previous.ticket;partialStartId=previous.startId;partialSequence=previous.sequence||0;previewUsed=!!previous.previewUsed;
+    try{
+      const response=await fetch('/.netlify/functions/partial-lead',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+partialTicket},body:JSON.stringify({action:'restore'}),signal:AbortSignal.timeout(10000)}),restored=await response.json();
+      if(response.ok&&restored.ok){
+        if(Array.isArray(restored.history))for(const m of restored.history.slice(-200))if(['user','assistant'].includes(m?.role)&&typeof m.content==='string'){history.push(m);addMsg(m.content,m.role==='user'?'user':'bot');}
+        partialSequence=Math.max(partialSequence,restored.sequence||0);previewUsed=previewUsed||!!restored.previewUsed;registered=!!restored.completed;
+      }else if(response.status===410){partialTicket=null;partialStartId=crypto.randomUUID();previewUsed=false;partialSequence=0;}
+    }catch{}
+  }
   error.textContent='';
   document.getElementById('startScreen').hidden=true;
   document.getElementById('chatPanel').hidden=false;
@@ -129,8 +144,16 @@ document.getElementById('startForm').addEventListener('submit',event=>{
   updateArtworkControls();
   addMsg('Olá, '+nome+'! Sou o atendimento virtual da IDY Gráfica. O que você precisa?\n\nQuando estiver tudo certo, escreva “pode encaminhar” para enviar seu atendimento à equipe da IDY.');
   queuePartialSave();
+  if(previewUsed)offerArtworkHuman();
   input.focus();
 });
+
+function loadAttendanceSession(){
+  try{if(typeof sessionStorage==='undefined')return null;const value=JSON.parse(sessionStorage.getItem('idy-attendance-session')||'null');return value?.version===1&&typeof value.ticket==='string'&&typeof value.startId==='string'?value:null;}catch{return null;}
+}
+function saveAttendanceSession(){
+  try{if(typeof sessionStorage!=='undefined'&&partialTicket)sessionStorage.setItem('idy-attendance-session',JSON.stringify({version:1,contact:clientContact,ticket:partialTicket,startId:partialStartId,sequence:partialSequence,previewUsed}));}catch{}
+}
 
 function queuePartialSave(action='save'){
   if(!clientContact)return Promise.resolve();
@@ -144,6 +167,7 @@ function queuePartialSave(action='save'){
       const r=await fetch('/.netlify/functions/partial-lead',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+partialTicket},body:JSON.stringify(snapshot),signal:AbortSignal.timeout(10000)});
       if(!r.ok||(await r.json()).ok!==true)throw Error();
       saveStatus.textContent='Conversa salva para a equipe da IDY.';
+      saveAttendanceSession();
     }catch{saveStatus.textContent='Salvamento automático não confirmado. Você pode continuar e confirmar o encaminhamento no chat.';}
   });return partialSaving;
 }
@@ -172,7 +196,7 @@ function showArtPreview(file,bubble){
 }
 
 function updateArtworkControls(){
-  const busy=!clientContact||asking||submitting||artworkBusy||registered;
+  const busy=!clientContact||asking||submitting||artworkBusy||registered||previewUsed;
   createArtworkButton.disabled=busy;
   improveArtworkButton.disabled=busy||!['image/jpeg','image/png'].includes((generatedFile||selectedFile)?.type);
 }
@@ -193,6 +217,7 @@ async function encodeImageReference(file){
   const data=canvas.toDataURL('image/jpeg',.85);if(data.length>2600000)throw new Error('A imagem está grande demais para preparar a prévia. Use uma versão menor para a criação.');return data;
 }
 async function requestArtwork(brief,mode){
+  if(previewUsed){offerArtworkHuman();return;}
   if(registered){addMsg('Seu atendimento já foi encaminhado. A equipe da IDY pode ajudar a complementar a arte.');return;}
   const reference=generatedFile||selectedFile;
   if(mode==='edit'&&!['image/jpeg','image/png'].includes(reference?.type)){addMsg('Para melhorar a arte, anexe uma imagem JPG ou PNG. Você também pode pedir uma nova proposta do zero.');return;}
@@ -200,32 +225,59 @@ async function requestArtwork(brief,mode){
   statusEl.textContent='Preparando sua proposta visual...';addMsg('Vou preparar uma prévia da arte. Ela aparecerá aqui na conversa para você conferir.');
   let ticket=null,completed=false;
   try{
+    await partialSaving;
+    if(!partialTicket)throw new Error('Não consegui confirmar o registro deste atendimento para preparar a prévia. Você pode falar com o atendimento humano pelo botão acima da mensagem.');
     const image=mode==='edit'?await encodeImageReference(reference):undefined;
-    const response=await fetch('/.netlify/functions/artwork',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,brief,image})});
-    const job=await response.json().catch(()=>({}));if(!response.ok||!job.ok||!job.ticket)throw new Error(job.error||'Não consegui iniciar a criação da prévia.');ticket=job.ticket;
-    let result;const deadline=Date.now()+240000;
+    const response=await fetch('/.netlify/functions/artwork',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,brief,image,attendanceTicket:partialTicket})});
+    const job=await response.json().catch(()=>({}));
+    if(job.errorCode==='ARTWORK_ALREADY_USED'){previewUsed=true;offerArtworkHuman();return;}
+    if(!response.ok||!job.ok||!job.ticket)throw new Error(job.error||'Não consegui iniciar a criação da prévia.');ticket=job.ticket;
+    let result,notificationState=null;const deadline=Date.now()+240000;
     while(Date.now()<deadline){
       await new Promise(resolve=>setTimeout(resolve,2500));
       const poll=await fetch('/.netlify/functions/artwork',{headers:{Authorization:'Bearer '+ticket}}),data=await poll.json().catch(()=>({}));
       if(!poll.ok||!data.ok)throw new Error(data.error||'Não consegui consultar a prévia.');
-      if(data.status==='completed'&&data.image){result=data.image;break;}
+      if(data.status==='completed'&&data.image){result=data.image;notificationState=data.notification?.state||null;break;}
     }
     if(!result)throw new Error('A criação está demorando mais que o esperado. Você pode pedir outra proposta ou encaminhar seu pedido à equipe.');
     const match=result.match(/^data:image\/(jpeg|png);base64,([A-Za-z0-9+/]+={0,2})$/);if(!match||result.length>4000000)throw new Error('Não foi possível mostrar a imagem gerada.');
     const bytes=Uint8Array.from(atob(match[2]),c=>c.charCodeAt(0));generatedFile=new File([bytes],'proposta-idy.'+(match[1]==='jpeg'?'jpg':'png'),{type:'image/'+match[1]});
-    completed=true;
+    completed=true;previewUsed=true;saveAttendanceSession();
     if(proposalImage)proposalImage.remove();if(proposalDownload)proposalDownload.remove();if(proposalUrl)URL.revokeObjectURL(proposalUrl);proposalUrl=URL.createObjectURL(generatedFile);
-    const bubble=addMsg('Preparei uma proposta visual. Confira os textos, cores e informações. Você pode pedir outras mudanças ou dizer “pode encaminhar” para enviar a proposta à equipe da IDY. A arte ainda precisa ser conferida pela gráfica antes da produção.');
+    const bubble=addMsg('Preparei sua única prévia de arte deste atendimento. Confira os textos, cores e informações. Para outras propostas ou ajustes, use “Falar com atendimento humano”. Você pode dizer “pode encaminhar” para enviar seu pedido à equipe da IDY. O arquivo final para impressão ainda depende de aprovação humana.');
     proposalImage=document.createElement('img');proposalImage.className='art-preview';proposalImage.alt='Proposta visual criada para aprovação';proposalImage.src=proposalUrl;bubble.appendChild(proposalImage);
     const download=document.createElement('a');download.className='proposal-download';download.href=proposalUrl;download.download=generatedFile.name;download.textContent='Baixar prévia';bubble.appendChild(download);proposalDownload=download;
     history.push({role:'assistant',content:'Uma proposta visual foi preparada para aprovação do cliente: '+generatedFile.name+'.'});
     queuePartialSave();
     statusEl.textContent='Prévia pronta para conferir.';
+    showArtworkNotice(notificationState||'pending');
+    if(notificationState==='pending'||notificationState==='processing')followArtworkNotice(ticket);
   }catch(error){addMsg(error.message||'Não consegui preparar a prévia agora.');statusEl.textContent='A prévia não foi concluída.';}
   finally{
     if(ticket&&completed)fetch('/.netlify/functions/artwork',{method:'DELETE',headers:{Authorization:'Bearer '+ticket}}).catch(()=>{});
     artworkBusy=false;send.disabled=false;input.disabled=false;attach.disabled=false;updateArtworkControls();input.focus();
   }
+}
+
+function offerArtworkHuman(){
+  addMsg('A prévia de arte disponível para este atendimento já foi utilizada. Não vou gerar uma segunda imagem automaticamente. Para novas propostas ou ajustes, fale com o atendimento humano.\n\n[[WHATSAPP:Olá! Vim pelo Atendimento com IA da IDY Gráfica, já utilizei minha prévia de arte e gostaria de falar com um atendente.]]');
+  statusEl.textContent='Sua prévia já foi utilizada. Atendimento humano disponível.';
+}
+function showArtworkNotice(state){
+  const notice=document.getElementById('artworkNotice');notice.hidden=false;
+  notice.textContent=state==='accepted'?'Notificação com a prévia encaminhada ao WhatsApp do responsável.':state==='pending'||state==='processing'||state==='retry'?'Aviso ao responsável em processamento.':'A prévia está pronta, mas o aviso à equipe ainda está pendente. Você pode usar “Falar com atendimento humano”.';
+}
+async function followArtworkNotice(ticket){
+  for(let attempt=0;attempt<10;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,2000));
+    try{
+      const response=await fetch('/.netlify/functions/artwork?notification=1',{headers:{Authorization:'Bearer '+ticket}}),data=await response.json();
+      if(!response.ok||!data.ok)break;
+      const state=data.notification?.state;if(!state)break;showArtworkNotice(state);
+      if(!['pending','processing','retry'].includes(state))return;
+    }catch{break;}
+  }
+  showArtworkNotice('unconfirmed');
 }
 
 function offerHandoff(){
@@ -272,7 +324,7 @@ fileInput.addEventListener('change',()=>{
   if(!clientContact||submitting||artworkBusy)return;
   const f=fileInput.files?.[0];if(!f)return;
   if(f.size>8*1024*1024){alert('O arquivo pode ter no máximo 8 MB.');fileInput.value='';return;}
-  generatedFile=null;if(proposalImage){proposalImage.remove();proposalImage=null;}if(proposalDownload){proposalDownload.remove();proposalDownload=null;}if(proposalUrl){URL.revokeObjectURL(proposalUrl);proposalUrl=null;}
+  if(!previewUsed){generatedFile=null;if(proposalImage){proposalImage.remove();proposalImage=null;}if(proposalDownload){proposalDownload.remove();proposalDownload=null;}if(proposalUrl){URL.revokeObjectURL(proposalUrl);proposalUrl=null;}}
   selectedFile=f;filetag.textContent='Arte selecionada: '+f.name;const bubble=addMsg('Arquivo selecionado: '+f.name,'user');showArtPreview(f,bubble);history.push({role:'user',content:'O cliente selecionou uma arte/arquivo chamado '+f.name+'.'});updateArtworkControls();
   handoffOffered=false;handoffQueued=true;offerHandoff();
 });

@@ -1,3 +1,8 @@
+import {createHmac,randomUUID} from 'node:crypto';
+export async function testAttendance(store,secret,{now=Date.now(),id=randomUUID(),contact={nome:'Cliente fictício',whatsapp:'(51) 99999-0000',email:'cliente@example.invalid'},history=[]}={}){
+  await store.setJSON('drafts/'+id,{id,contact,history,createdAt:now,lastActivity:now,state:'active',sequence:0});
+  return id+'.'+createHmac('sha256',secret).update(id).digest('hex');
+}
 export class MemoryStore{
   values=new Map();version=0;
   async getWithMetadata(key){const value=this.values.get(key);return value?structuredClone(value):null;}
