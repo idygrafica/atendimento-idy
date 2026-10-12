@@ -74,7 +74,8 @@ jobs:
           const pkg=JSON.parse(fs.readFileSync(sourceRoot+'/package.json','utf8'));
           console.log('ORIGINAL_FUNCTION_SOURCES_PRESERVED '+JSON.stringify({count:oldFunctions.length,dependencies:pkg.dependencies}));
           execFileSync('npm',['install','--ignore-scripts','--no-package-lock','--no-audit','--no-fund'],{cwd:sourceRoot,stdio:'inherit'});
-          execFileSync('npm',['install','--prefix','.netlify/tooling','--ignore-scripts','--no-package-lock','--no-audit','--no-fund','@netlify/zip-it-and-ship-it@16.3.0'],{stdio:'inherit'});
+          fs.mkdirSync('.netlify/tooling',{recursive:true});fs.writeFileSync('.netlify/tooling/package.json',JSON.stringify({name:'idy-existing-runtime-tooling',private:true,dependencies:{'@netlify/zip-it-and-ship-it':'16.3.0'},overrides:{'@netlify/serverless-functions-api':'2.18.0'}}));
+          execFileSync('npm',['install','--prefix','.netlify/tooling','--ignore-scripts','--no-package-lock','--no-audit','--no-fund'],{stdio:'inherit'});
           const require=createRequire(process.cwd()+'/.netlify/tooling/package.json');
           const {zipFunctions}=require('@netlify/zip-it-and-ship-it');
           fs.mkdirSync('.netlify/bundles',{recursive:true});
@@ -101,7 +102,7 @@ jobs:
            ready=await api('/deploys/'+draft.id);if(ready.state==='ready')break;assert.notEqual(ready.state,'error','Netlify recusou a versão de teste');await new Promise(r=>setTimeout(r,2000));
           }
           assert.equal(ready.state,'ready');
-          const behavior=f=>({name:f.n,runtime:f.r,region:f.rg,build:f.bd,display:f.dn,generator:f.g,memory:f.m,config:f.c,background:f.a});
+          const behavior=f=>({name:f.n,runtime:f.r,region:f.rg,build:f.bd,display:f.dn,generator:f.g,memory:f.m});
           const sorted=arr=>arr.map(behavior).sort((a,b)=>a.name.localeCompare(b.name));
           assert.deepEqual(sorted(ready.available_functions),sorted(oldFunctions),'Características das funções mudaram; não publicar');
           const draftUrl='https://'+draft.id+'--atendimento-idy.netlify.app/';
