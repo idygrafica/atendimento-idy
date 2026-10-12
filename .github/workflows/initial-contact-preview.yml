@@ -1,45 +1,64 @@
-name: Verify published initial contact screen
+name: Validate chat handoff and artwork preview
 on:
   push:
     branches: [codex/tela-inicial-atendimento]
 permissions:
   contents: read
 jobs:
-  preview:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Check flow
+          node-version: '24'
+      - name: Check confirmation and failures
         run: node flow.test.mjs
       - name: Install browser
         run: |
           npm install --no-save --package-lock=false playwright
           npx playwright install --with-deps chromium
-      - name: Verify actual published page without submitting requests
+      - name: Verify preview and handoff using mocked services
         run: |
           node <<'JS'
-          const {chromium}=require('playwright'),assert=require('assert/strict');
+          const {chromium}=require('playwright'),fs=require('fs'),http=require('http'),assert=require('assert/strict');
           (async()=>{
-            const browser=await chromium.launch();
-            for(const width of [320,390,780,1024,1280]){
-              const page=await browser.newPage({viewport:{width,height:900}});
-              await page.route('**/*',route=>route.request().method()==='POST'?route.abort():route.continue());
-              const response=await page.goto('https://atendimento-idy.netlify.app/?verified='+Date.now());assert.equal(response.status(),200);
-              await page.evaluate(()=>Promise.all([...document.images].map(e=>e.decode())));
-              assert(await page.locator('#startScreen').isVisible());assert(!(await page.locator('#chatPanel').isVisible()));
-              const result=await page.evaluate(()=>{
-                const img=document.querySelector('.attendance-mascot img'),form=document.querySelector('#startScreen'),m=img.getBoundingClientRect(),f=form.getBoundingClientRect();
-                return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,mascotWidth:m.width,overlap:m.left<f.right&&m.right>f.left&&m.top<f.bottom&&m.bottom>f.top,logo:document.querySelector('.logo img').src};
-              });
-              assert.equal(result.width,result.scrollWidth);assert(!result.overlap);assert(result.logo.endsWith('/assets/logo-idy-grafica.png'));
-              await page.locator('#clientName').fill('Cliente de teste');await page.locator('#clientEmail').fill('cliente@example.invalid');await page.locator('#clientPhone').fill('(51) 99999-0000');await page.locator('#startButton').click();
-              assert(await page.locator('#chatPanel').isVisible());assert(!(await page.locator('#startScreen').isVisible()));assert(await page.locator('#send').isEnabled());
-              console.log('LIVE_INITIAL_SCREEN_VERIFIED '+JSON.stringify(result));await page.close();
-            }
-            await browser.close();console.log('LIVE_INITIAL_SCREEN_CONFIRMED');
+           const html=fs.readFileSync('index.html','utf8');let forms=0,notices=0,formBody='';
+           const server=http.createServer((req,res)=>{
+            if(req.method==='GET'){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(html)}
+            let body='';req.on('data',c=>body+=c);req.on('end',()=>{
+             if(req.url==='/'){forms++;formBody=body;return res.end('Registrado')}
+             res.setHeader('Content-Type','application/json');
+             if(req.url==='/.netlify/functions/chat')return res.end(JSON.stringify({answer:'Podemos preparar os cartões. A equipe da IDY fará a conferência do pedido.'}));
+             notices++;res.end(JSON.stringify({ok:true}));
+            });
+           });await new Promise(resolve=>server.listen(8787,'127.0.0.1',resolve));
+           const browser=await chromium.launch(),request=await browser.newPage();
+           const image=await request.request.get('https://idygrafica.netlify.app/assets/logo-idy-grafica.png');assert(image.ok());const imageBytes=await image.body();await request.close();
+           for(const width of [320,390,780,1024,1280]){
+            const page=await browser.newPage({viewport:{width,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8787/');
+            await page.evaluate(()=>Promise.all([...document.images].map(e=>e.decode())));
+            await page.locator('#clientName').fill('Cliente de teste');await page.locator('#clientEmail').fill('cliente@example.invalid');await page.locator('#clientPhone').fill('(51) 99999-0000');await page.locator('#startButton').click();
+            assert.equal(await page.locator('#lead').count(),0);assert.equal(await page.locator('dialog').count(),0);
+            const beforeForms=forms,beforeNotices=notices;
+            await page.locator('#message').fill('Quero 500 cartões');await page.locator('#send').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Pronto.');
+            await page.locator('#fileInput').setInputFiles({name:'arte-exemplo.png',mimeType:'image/png',buffer:imageBytes});
+            await page.waitForFunction(()=>document.querySelector('.art-preview')?.naturalWidth>0);
+            assert.equal(forms,beforeForms);assert.equal(notices,beforeNotices);
+            const result=await page.evaluate(()=>{
+             const image=document.querySelector('.art-preview'),send=document.querySelector('#send'),attach=document.querySelector('#attach'),r=image.getBoundingClientRect(),sr=send.getBoundingClientRect(),ar=attach.getBoundingClientRect();
+             return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,previewVisible:r.width>0&&r.height>0,previewInViewportWidth:r.left>=0&&r.right<=innerWidth,sendHeight:sr.height,attachHeight:ar.height,sendRadius:getComputedStyle(send).borderRadius,hasButtonIcons:!!send.querySelector('svg')&&!!attach.querySelector('svg'),confirmationText:[...document.querySelectorAll('.msg.bot')].at(-1).textContent};
+            });
+            assert.equal(result.width,result.scrollWidth);assert(result.previewVisible&&result.previewInViewportWidth&&result.hasButtonIcons);assert(result.sendHeight>=44&&result.attachHeight>=44);assert.equal(result.sendRadius,'14px');assert(result.confirmationText.includes('Precisa de mais alguma coisa'));
+            if(width===390||width===1280)console.log('HANDOFF_PREVIEW_'+width+' '+(await page.screenshot({type:'jpeg',quality:75,fullPage:true})).toString('base64'));
+            await page.locator('#message').fill('Não pode enviar');await page.locator('#send').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Pronto.');assert.equal(forms,beforeForms);
+            await page.locator('#message').fill('Pode encaminhar');await page.locator('#send').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Atendimento registrado e equipe avisada pelo WhatsApp.');
+            assert.equal(forms,beforeForms+1);assert.equal(notices,beforeNotices+1);assert(formBody.includes('cliente@example.invalid')&&formBody.includes('arte-exemplo.png'));
+            await page.locator('#message').fill('Pode encaminhar');await page.locator('#send').click();assert.equal(forms,beforeForms+1);assert.equal(notices,beforeNotices+1);assert.equal(errors.length,0);
+            console.log('HANDOFF_LAYOUT_VERIFIED '+JSON.stringify({...result,singleRegistration:true,fileAndContactRecorded:true,refusalDoesNotSubmit:true}));await page.close();
+           }
+           await browser.close();await new Promise(resolve=>server.close(resolve));console.log('HANDOFF_BROWSER_VERIFIED');
           })().catch(e=>{console.error(e);process.exit(1)});
+          
           JS
