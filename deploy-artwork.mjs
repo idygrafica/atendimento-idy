@@ -66,6 +66,14 @@ assert.equal(bundles.length,oldFunctions.length+newNames.length);
 const uploads=new Map();
 for(const bundle of bundles){
  const fn=oldFunctions.find(f=>f.n===bundle.name)||{n:bundle.name,r:'nodejs24.x',bd:{bootstrapVersion:'2.18.0',runtimeAPIVersion:2}};assert(oldFunctions.some(f=>f.n===fn.n)||newNames.includes(fn.n));
+ if(bundle.invocationMode==='stream'){
+ execFileSync('python3',['-c',String.raw`import zipfile,sys,json
+with zipfile.ZipFile(sys.argv[1],'a') as z:
+ info=zipfile.ZipInfo('.idy-native-runtime.json',(2020,1,1,0,0,0))
+ info.compress_type=zipfile.ZIP_DEFLATED
+ z.writestr(info,json.dumps({'runtimeAPIVersion':2,'invocationMode':'stream'}))
+`,bundle.path],{stdio:'inherit'});
+ }
  const bytes=fs.readFileSync(bundle.path),digest=createHash('sha256').update(bytes).digest('hex');
  functions[fn.n]=digest;uploads.set(digest,{name:fn.n,bytes,runtime:fn.r,invocationMode:bundle.invocationMode});
  console.log('BUNDLE_RUNTIME '+JSON.stringify({name:fn.n,invocationMode:bundle.invocationMode}));
@@ -150,5 +158,4 @@ try{
 }
 report.state='published';report.publishedDeploy=production.id;report.publicUrl=base;report.existingFunctionSourceCodeUnchanged=true;report.functionsRepackaged=true;fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
 console.log('PAGE_PUBLICATION_CONFIRMED '+JSON.stringify(report));
-
 
