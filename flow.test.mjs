@@ -5,7 +5,8 @@ import {readFile} from 'node:fs/promises';
 
 class Element {
   value='';textContent='';children=[];hidden=false;disabled=false;events=new Map();
-  appendChild(child){this.children.push(child)}
+  appendChild(child){this.children.push(child);child.parent=this}
+  remove(){if(this.parent)this.parent.children=this.parent.children.filter(e=>e!==this)}
   get scrollHeight(){return this.children.length}
   addEventListener(name,fn){this.events.set(name,fn)}
   async trigger(name,event={}){return this.events.get(name)?.(event)}
@@ -17,7 +18,7 @@ async function page(fetchImpl=async()=>Response.json({answer:'Resposta de teste'
     const el=new Element();el.hidden=/\bhidden\b/.test(match[0]);el.disabled=/\bdisabled\b/.test(match[0]);elements.set(match[1],el);
   }
   const get=id=>{assert(elements.has(id),'Elemento '+id);return elements.get(id)};
-  const context=vm.createContext({document:{getElementById:get,createElement:()=>new Element()},fetch:fetchImpl,FormData,console,encodeURIComponent,alert:message=>{throw Error(message)}});
+  const context=vm.createContext({document:{getElementById:get,createElement:()=>new Element()},fetch:fetchImpl,FormData,URL,console,encodeURIComponent,alert:message=>{throw Error(message)}});
   vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
   return {get,html,async start(){get('clientName').value='Cliente de teste';get('clientEmail').value='cliente@example.invalid';get('clientPhone').value='(51) 99999-0000';await get('startForm').trigger('submit',{preventDefault(){}})}};
 }
@@ -25,7 +26,7 @@ async function page(fetchImpl=async()=>Response.json({answer:'Resposta de teste'
 test('a conversa e o envio ficam bloqueados antes de informar os contatos',async()=>{
   let calls=0;const p=await page(async()=>{calls++;return Response.json({answer:'Teste'})});
   assert.equal(p.get('startScreen').hidden,false);assert.equal(p.get('chatPanel').hidden,true);
-  p.get('message').value='Quero cartões';await p.get('send').trigger('click');await p.get('submitLead').trigger('click');
+  p.get('message').value='Quero cartões';await p.get('send').trigger('click');
   assert.equal(calls,0);assert.equal(p.get('chat').children.length,0);
 });
 test('nome, e-mail e telefone válidos liberam a conversa sem enviar nada',async()=>{
@@ -42,8 +43,7 @@ test('o contato inicial e o anexo são reutilizados no registro final',async()=>
   let form;const p=await page(async(url,options)=>{if(url==='/'){form=options.body;return new Response('Registrado')}return Response.json({ok:true})});
   await p.start();
   p.get('fileInput').files=[new File(['arte de teste'],'arte.pdf',{type:'application/pdf'})];await p.get('fileInput').trigger('change');
-  await p.get('lead').trigger('click');assert.match(p.get('contactSummary').textContent,/cliente@example.invalid/);
-  await p.get('submitLead').trigger('click');
+  p.get('message').value='Pode encaminhar';await p.get('send').trigger('click');
   assert.equal(form.get('nome'),'Cliente de teste');assert.equal(form.get('email'),'cliente@example.invalid');assert.equal(form.get('whatsapp'),'(51) 99999-0000');assert.equal(form.get('arte').name,'arte.pdf');assert.match(form.get('resumo'),/E-mail: cliente@example.invalid/);
 });
 test('a identificação inicial mantém a proteção contra pedidos simultâneos',async()=>{
@@ -51,4 +51,47 @@ test('a identificação inicial mantém a proteção contra pedidos simultâneos
   const p=await page(async()=>{calls++;await wait;return Response.json({answer:'Teste'})});await p.start();
   p.get('message').value='500 cartões';const pending=p.get('send').trigger('click');p.get('message').value='Outro pedido';await p.get('message').trigger('keydown',{key:'Enter',preventDefault(){}});
   assert.equal(calls,1);release();await pending;assert.equal(p.get('send').disabled,false);
+});
+
+const file=()=>new File(['arte de teste'],'arte.pdf',{type:'application/pdf'});
+const attach=async p=>{p.get('fileInput').files=[file()];await p.get('fileInput').trigger('change')};
+const say=async(p,text)=>{p.get('message').value=text;await p.get('send').trigger('click')};
+
+test('o anexo oferece encaminhamento na conversa sem registrar antes da confirmação',async()=>{
+  const calls=[];const p=await page(async(url,options)=>{calls.push({url,options});return Response.json({ok:true,answer:'Resposta'})});
+  await p.start();await attach(p);assert.equal(calls.length,0);
+  assert.match(p.get('chat').children.at(-1).children[0].textContent,/Precisa de mais alguma coisa/);
+  assert(!p.html.includes('id="lead"'));assert(!p.html.includes('id="leadDialog"'));
+  await say(p,'Não, pode encaminhar.');assert.deepEqual(calls.map(c=>c.url),['/','/.netlify/functions/notify-idy-whatsapp']);
+  await say(p,'Pode encaminhar');assert.equal(calls.length,2);
+});
+test('recusa e perguntas adicionais continuam na IA sem disparar registro',async()=>{
+  for(const text of ['Não pode enviar','Não envie ainda','Ainda não','Sim, preciso mudar a quantidade','Pode enviar? Antes preciso saber o preço']){
+    const calls=[];const p=await page(async url=>{calls.push(url);return Response.json({answer:'Vamos continuar'})});await p.start();await attach(p);await say(p,text);assert.deepEqual(calls,['/.netlify/functions/chat'],text);
+  }
+});
+test('não sozinho só finaliza após a pergunta de encaminhamento',async()=>{
+  const calls=[];const p=await page(async url=>{calls.push(url);return Response.json({answer:'Resposta',ok:true})});await p.start();await say(p,'Não');assert.deepEqual(calls,['/.netlify/functions/chat']);await attach(p);await say(p,'Não');assert.deepEqual(calls,['/.netlify/functions/chat','/','/.netlify/functions/notify-idy-whatsapp']);
+});
+test('um arquivo selecionado durante a resposta oferece encaminhamento depois dela',async()=>{
+  let release;const wait=new Promise(resolve=>release=resolve);const p=await page(async()=>{await wait;return Response.json({answer:'Resposta'})});await p.start();p.get('message').value='Meu pedido';const pending=p.get('send').trigger('click');await attach(p);assert(!p.get('chat').children.at(-1).children[0]);release();await pending;assert.match(p.get('chat').children.at(-1).children[0].textContent,/Precisa de mais alguma coisa/);
+});
+test('confirmações simultâneas geram apenas um registro e um aviso',async()=>{
+  const calls=[];let release;const wait=new Promise(resolve=>release=resolve);const p=await page(async url=>{calls.push(url);if(url==='/')await wait;return Response.json({ok:true})});await p.start();await attach(p);p.get('message').value='Pode enviar';const pending=p.get('send').trigger('click');await say(p,'Pode enviar');assert.deepEqual(calls,['/']);assert.equal(p.get('attach').disabled,true);release();await pending;assert.deepEqual(calls,['/','/.netlify/functions/notify-idy-whatsapp']);assert.equal(p.get('send').disabled,false);
+});
+test('falha de registro não promete envio e permite repetição explícita com o arquivo',async()=>{
+  let forms=0;const p=await page(async url=>{if(url==='/'&&++forms===1)return new Response('Falhou',{status:503});return Response.json({ok:true})});await p.start();await attach(p);await say(p,'Pode encaminhar');assert.match(p.get('status').textContent,/Não foi possível confirmar/);await say(p,'tentar novamente');assert.equal(forms,2);assert.match(p.get('status').textContent,/equipe avisada/);
+});
+test('falha do aviso WhatsApp preserva o registro e não repete o formulário',async()=>{
+  let forms=0;const p=await page(async url=>{if(url==='/'){forms++;return new Response('Salvo')}return Response.json({ok:false},{status:502})});await p.start();await attach(p);await say(p,'Pode encaminhar');assert.match(p.get('status').textContent,/registrado.*não confirmado/);await say(p,'Pode enviar');assert.equal(forms,1);
+});
+test('a confirmação explícita também encaminha pedidos sem arquivo',async()=>{
+  let form;const p=await page(async(url,options)=>{if(url==='/')form=options.body;return Response.json({ok:true})});await p.start();await say(p,'Pode encaminhar');assert.equal(form.get('arte'),null);assert.equal(form.get('email'),'cliente@example.invalid');
+});
+
+test('a imagem aparece na conversa sem upload antecipado e seu URL é liberado ao trocar o arquivo',async()=>{
+  let calls=0;const p=await page(async()=>{calls++;return Response.json({ok:true})});await p.start();
+  p.get('fileInput').files=[new File(['imagem'],'cartao.jpg',{type:'image/jpeg'})];await p.get('fileInput').trigger('change');
+  const bubble=p.get('chat').children.at(-2),image=bubble.children[0];assert.match(image.src,/^blob:/);assert.match(image.alt,/cartao.jpg/);assert.equal(calls,0);
+  await attach(p);assert.equal(bubble.children.length,0);assert.equal(calls,0);
 });
