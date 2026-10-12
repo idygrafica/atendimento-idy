@@ -26,7 +26,9 @@ jobs:
           async function get(path){const r=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});assert(r.ok,'Consulta Netlify HTTP '+r.status);return r.json();}
           const site=await get('/sites/'+siteId);assert.equal(site.name,'atendimento-idy');assert.equal(site.id,siteId);
           const deploy=await get('/deploys/'+site.published_deploy.id);assert.equal(deploy.state,'ready');assert.equal(deploy.site_id,siteId);
-          const files=await get('/sites/'+siteId+'/files'),functions=await get('/sites/'+siteId+'/functions');
+          const files=await get('/sites/'+siteId+'/files'),functionResult=await get('/sites/'+siteId+'/functions');
+          const functions=Array.isArray(functionResult)?functionResult:(Array.isArray(functionResult.functions)?functionResult.functions:[]);
+          console.log('FUNCTION_RESPONSE_SCHEMA '+JSON.stringify({keys:Object.keys(functionResult),array:Array.isArray(functionResult),sample:functions.slice(0,8).map(f=>({keys:Object.keys(f),name:f.name,sha:f.sha,id:f.id,functions:f.functions?.map(x=>({keys:Object.keys(x),name:x.name,sha:x.sha}))}))}));
           const live=await (await fetch('https://atendimento-idy.netlify.app/?source='+Date.now())).text(),original=fs.readFileSync('index.html','utf8');
           const main=await (await fetch('https://raw.githubusercontent.com/idygrafica/atendimento-idy/ef5c8c717e3f81f5cfd280b33d52944e655b7ad2/index.html')).text();
           const scripts=s=>s.split('<script>').slice(1).map(x=>x.split('</script>')[0].trim());
