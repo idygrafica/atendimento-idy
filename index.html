@@ -324,7 +324,7 @@ fileInput.addEventListener('change',()=>{
   if(!clientContact||submitting||artworkBusy)return;
   const f=fileInput.files?.[0];if(!f)return;
   if(f.size>8*1024*1024){alert('O arquivo pode ter no máximo 8 MB.');fileInput.value='';return;}
-  generatedFile=null;if(proposalImage){proposalImage.remove();proposalImage=null;}if(proposalDownload){proposalDownload.remove();proposalDownload=null;}if(proposalUrl){URL.revokeObjectURL(proposalUrl);proposalUrl=null;}
+  if(!previewUsed){generatedFile=null;if(proposalImage){proposalImage.remove();proposalImage=null;}if(proposalDownload){proposalDownload.remove();proposalDownload=null;}if(proposalUrl){URL.revokeObjectURL(proposalUrl);proposalUrl=null;}}
   selectedFile=f;filetag.textContent='Arte selecionada: '+f.name;const bubble=addMsg('Arquivo selecionado: '+f.name,'user');showArtPreview(f,bubble);history.push({role:'user',content:'O cliente selecionou uma arte/arquivo chamado '+f.name+'.'});updateArtworkControls();
   handoffOffered=false;handoffQueued=true;offerHandoff();
 });

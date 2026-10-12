@@ -68,6 +68,8 @@ Fontes oficiais:
 
 ## Estado antes da publicação
 
+Verificações: 85 testes automatizados passaram localmente. O navegador Chromium verificou 320, 390, 780, 1024 e 1280 pixels: botão humano acima do envio, destino e mensagem preenchida corretos, primeira prévia com notificação simulada, segunda geração bloqueada, retomada após recarregar e conversa da IA preservada. A compilação nativa das funções também passou. Evidência da validação em navegador e compilação: https://github.com/idygrafica/atendimento-idy/actions/runs/38265339318 .
+
 Implementação preparada em branch de teste, sem publicação. A aprovação humana do arquivo final continua obrigatória; o envio do aviso é uma notificação posterior à geração, não uma autorização para gerar.
 
 Ainda falta aprovar/configurar o template e validar uma entrega real com as credenciais protegidas. Os testes automatizados de upload, imagem no template, campos, fila, falhas e duplicidade usam a API da Meta simulada; não comprovam entrega real. Não foram enviadas mensagens reais nem geradas imagens reais nesta implementação. O site institucional `idy-gr-fica` não foi alterado.

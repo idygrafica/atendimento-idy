@@ -163,3 +163,9 @@ test('recarregar a página retoma o mesmo atendimento e não libera uma segunda 
   const a=await page(fetcher,{mockPartial:false,sessionStorage});await a.start();await say(a,'Crie uma arte para os meus cartões.');await a.flush();
   const b=await page(fetcher,{mockPartial:false,sessionStorage});await b.start();await say(b,'Crie outra arte para meu cartão.');assert.equal(starts,1);assert.equal(generations,1);assert.match(b.get('chat').children.at(-1).children[0].textContent,/já foi utilizada/);assert.equal(b.get('send').disabled,false);
 });
+test('trocar o arquivo original após a prévia conserva a proposta única para encaminhamento humano',async()=>{
+  let form,generations=0;const p=await page(async(url,options={})=>{
+    if(url==='/.netlify/functions/artwork'){if(options.method==='POST')generations++;return Response.json(options.method==='POST'?{ok:true,ticket:'test-ticket'}:options.method==='DELETE'?{ok:true}:{ok:true,status:'completed',image:sampleImage,notification:{state:'accepted'}});}
+    if(url==='/')form=options.body;return Response.json({ok:true});
+  });await p.start();await say(p,'Crie uma arte para meu cartão.');await attach(p);await say(p,'Pode encaminhar');assert.equal(generations,1);assert.equal(form.get('arte').name,'arte.pdf');assert.equal(form.get('proposta').name,'proposta-idy.png');
+});
