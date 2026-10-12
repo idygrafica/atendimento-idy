@@ -33,7 +33,7 @@ jobs:
           const {zipFunctions}=require('@netlify/zip-it-and-ship-it');
           const bundles=await zipFunctions('netlify/functions',process.cwd()+'/.quota-bundles',{config:{'*':{nodeVersion:'24',nodeBundler:'nft'}},archiveFormat:'zip'});
           const artwork=bundles.find(b=>b.name==='artwork');assert(artwork);assert.equal(artwork.runtimeAPIVersion,2);
-          const files=JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys; print(json.dumps(zipfile.ZipFile(sys.argv[1]).namelist()))',artwork.path],{encoding:'utf8'}));
-          assert(files.some(p=>p.endsWith('artwork-quota.mjs')),'O módulo de quota precisa acompanhar a função');
+          const compiled=JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys; z=zipfile.ZipFile(sys.argv[1]); code="\\n".join(z.read(n).decode("utf-8",errors="ignore") for n in z.namelist() if n.endswith((".js",".mjs",".cjs"))); print(json.dumps({"dayWindowIncluded":"America/Sao_Paulo" in code,"quotaIncluded":"PREVIEW_DAILY_LIMIT" in code and "PREVIEW_ATTEMPT_LIMIT" in code}))',artwork.path],{encoding:'utf8'}));
+          assert(compiled.dayWindowIncluded&&compiled.quotaIncluded,'O código de quota precisa acompanhar a função, como módulo ou incorporado pelo compilador');
           console.log('QUOTA_RUNTIME_BUNDLE_VERIFIED '+JSON.stringify({runtimeAPIVersion:artwork.runtimeAPIVersion,invocationMode:artwork.invocationMode,quotaModuleIncluded:true}));
           JS
