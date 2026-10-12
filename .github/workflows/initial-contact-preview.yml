@@ -1,38 +1,64 @@
-name: Verify published chat handoff
+name: Validate artwork proposals and idle handoff
 on:
   push:
     branches: [codex/tela-inicial-atendimento]
 permissions:
   contents: read
 jobs:
-  verify:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Check artwork, partial conversations and final handoff
+        run: node --test --test-isolation=none flow.test.mjs artwork.test.mjs partial-leads.test.mjs
       - name: Install browser
         run: |
           npm install --no-save --package-lock=false playwright
           npx playwright install --with-deps chromium
-      - name: Inspect published page without sending a real request
+      - name: Verify original image, proposal and handoff using mocked services
         run: |
           node <<'JS'
-          const {chromium}=require('playwright'),assert=require('assert/strict');
+          const {chromium}=require('playwright'),fs=require('fs'),http=require('http'),assert=require('assert/strict');
           (async()=>{
-           const browser=await chromium.launch(),request=await browser.newPage(),png=await (await request.request.get('https://idygrafica.netlify.app/assets/logo-idy-grafica.png')).body();await request.close();
+           const html=fs.readFileSync('index.html','utf8');let forms=0,notices=0,formBody='',artRequests=[];
+           const bytes=await (await fetch('https://idygrafica.netlify.app/assets/logo-idy-grafica.png')).arrayBuffer(),imageBytes=Buffer.from(bytes);
+           const server=http.createServer((req,res)=>{
+            if(req.method==='GET'&&req.url==='/.netlify/functions/artwork'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({ok:true,status:'completed',image:'data:image/png;base64,'+imageBytes.toString('base64')}));}
+            if(req.method==='GET'){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(html);}
+            let body='';req.on('data',c=>body+=c);req.on('end',()=>{
+             if(req.url==='/'){forms++;formBody=body;return res.end('Registrado');}
+             res.setHeader('Content-Type','application/json');
+             if(req.url==='/.netlify/functions/chat')return res.end(JSON.stringify({answer:'A equipe da IDY fará a conferência dos cartões.'}));
+             if(req.url==='/.netlify/functions/artwork'){if(req.method==='POST')artRequests.push(JSON.parse(body));return res.end(JSON.stringify({ok:true,ticket:'mock-ticket'}));}
+             if(req.url==='/.netlify/functions/partial-lead')return res.end(JSON.stringify({ok:true,ticket:'mock-lead-ticket'}));
+             notices++;res.end(JSON.stringify({ok:true}));
+            });
+           });await new Promise(resolve=>server.listen(8787,'127.0.0.1',resolve));
+           const browser=await chromium.launch();
            for(const width of [320,390,780,1024,1280]){
-            const page=await browser.newPage({viewport:{width,height:900}});let posts=0;await page.route('**/*',route=>{if(route.request().method()==='POST'){posts++;return route.abort()}return route.continue()});
-            const response=await page.goto('https://atendimento-idy.netlify.app/?check='+Date.now());assert.equal(response.status(),200);
-            await page.locator('#clientName').fill('Cliente de teste');await page.locator('#clientEmail').fill('cliente@example.invalid');await page.locator('#clientPhone').fill('(51) 99999-0000');await page.locator('#startButton').click();
-            await page.locator('#fileInput').setInputFiles({name:'arte-exemplo.png',mimeType:'image/png',buffer:png});await page.waitForFunction(()=>document.querySelector('.art-preview')?.naturalWidth>0);
-            assert.equal(posts,0);assert.equal(await page.locator('dialog').count(),0);assert.equal(await page.locator('#lead').count(),0);
-            const result=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,preview:document.querySelector('.art-preview').naturalWidth>0,buttonRadius:getComputedStyle(document.querySelector('#send')).borderRadius,confirmation:[...document.querySelectorAll('.msg.bot')].at(-1).textContent}));
-            assert.equal(result.width,result.scrollWidth);assert.equal(result.buttonRadius,'14px');assert(result.confirmation.includes('pode encaminhar'));console.log('LIVE_HANDOFF_VERIFIED '+JSON.stringify(result));await page.close();
+            const page=await browser.newPage({viewport:{width,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8787/');
+            await page.evaluate(()=>Promise.all([...document.images].map(e=>e.decode())));
+            await page.locator('#clientName').fill('Cliente fictício');await page.locator('#clientEmail').fill('cliente@example.invalid');await page.locator('#clientPhone').fill('(51) 99999-0000');await page.locator('#startButton').click();
+            await page.waitForFunction(()=>document.querySelector('#saveStatus').textContent.includes('Conversa salva'));
+            const beforeForms=forms,beforeNotices=notices,beforeArt=artRequests.length;
+            await page.locator('#message').fill('Quero 500 cartões');await page.locator('#send').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Pronto.');
+            await page.locator('#fileInput').setInputFiles({name:'arte-original.png',mimeType:'image/png',buffer:imageBytes});await page.waitForFunction(()=>document.querySelector('.art-preview')?.naturalWidth>0);
+            await page.locator('#improveArtwork').click();await page.locator('#message').fill('Melhore minha arte: mantenha os textos e dê mais contraste ao fundo.');await page.locator('#send').click();
+            await page.waitForFunction(()=>document.querySelector('#status').textContent==='Prévia pronta para conferir.');
+            assert.equal(artRequests.length,beforeArt+1);assert.equal(artRequests.at(-1).mode,'edit');assert(artRequests.at(-1).image.startsWith('data:image/jpeg;base64,'));
+            await page.locator('img[alt="Proposta visual criada para aprovação"]').evaluate(e=>e.decode());assert.equal(forms,beforeForms);assert.equal(notices,beforeNotices);
+            const result=await page.evaluate(()=>{
+             const imgs=[...document.querySelectorAll('.art-preview')],buttons=[...document.querySelectorAll('.composer button,.art-tools button')];
+             return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,originalAndProposalVisible:imgs.length===2&&imgs.every(e=>e.naturalWidth>0&&e.getBoundingClientRect().right<=innerWidth),buttonsUsable:buttons.every(e=>e.getBoundingClientRect().height>=44),downloadPresent:!!document.querySelector('.proposal-download'),logoOriginal:document.querySelector('.logo img').src.includes('logo-idy-grafica'),noSecondDialog:document.querySelectorAll('dialog,#lead').length===0};
+            });assert.equal(result.width,result.scrollWidth);assert(result.originalAndProposalVisible&&result.buttonsUsable&&result.downloadPresent&&result.logoOriginal&&result.noSecondDialog);assert.equal(errors.length,0);
+            await page.locator('#message').fill('Pode encaminhar esta proposta');await page.locator('#send').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Atendimento registrado e equipe avisada pelo WhatsApp.');
+            assert.equal(forms,beforeForms+1);assert.equal(notices,beforeNotices+1);assert(formBody.includes('arte-original.png')&&formBody.includes('proposta-idy.png')&&formBody.includes('cliente@example.invalid'));
+            console.log('ARTWORK_LAYOUT_VERIFIED '+JSON.stringify({...result,originalAndProposalForwarded:true}));await page.close();
            }
-           await browser.close();console.log('LIVE_HANDOFF_CONFIRMED');
+           await browser.close();await new Promise(resolve=>server.close(resolve));console.log('ARTWORK_BROWSER_VERIFIED');
           })().catch(e=>{console.error(e);process.exit(1)});
-          
           JS

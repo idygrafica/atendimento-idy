@@ -23,6 +23,7 @@
     .composer{align-items:end}.composer textarea{border-radius:14px;line-height:1.4}.composer button{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:54px;border-radius:14px;transition:background .16s ease,box-shadow .16s ease,transform .16s ease}.composer button svg{width:21px;height:21px;flex-shrink:0}.composer .attach{width:54px;min-width:54px;padding:0;background:#eaf4ee;color:#176333;border:1px solid #c6dfd0}.composer .attach:hover:not(:disabled){background:#dcefe3}.composer #send{background:linear-gradient(135deg,#33a852,#238b40);font-size:14px;box-shadow:0 4px 12px rgba(35,139,64,.18)}.composer #send:hover:not(:disabled){box-shadow:0 6px 16px rgba(35,139,64,.26);transform:translateY(-1px)}.composer button:focus-visible,.composer textarea:focus-visible{outline:3px solid #0b1f33;outline-offset:3px}.composer button:active:not(:disabled){transform:translateY(0)}.filetag{overflow-wrap:anywhere}
     @media(prefers-reduced-motion:reduce){.composer button{transition:none}}
     .msg{overflow-wrap:anywhere}.art-preview{display:block;width:auto;max-width:min(280px,100%);max-height:240px;height:auto;object-fit:contain;margin-top:10px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:#fff}
+    .art-tools{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 16px;background:#fff}.art-tools button{padding:10px 12px;border:1px solid #c6dfd0;border-radius:12px;background:#eaf4ee;color:#176333;font-size:12px;min-height:44px}.art-tools button:focus-visible{outline:3px solid #0b1f33;outline-offset:3px}.proposal-download{display:inline-block;margin-top:10px;color:#176333;font-weight:700;text-decoration:underline}.art-tools small{width:100%;color:var(--muted);line-height:1.4}
     [hidden]{display:none!important}.start-screen{background:var(--card);border:1px solid var(--line);padding:28px;max-width:560px;margin:0 auto}.start-screen h1{font-size:26px;margin:0 0 12px}.start-screen p{line-height:1.5;color:var(--muted)}.start-screen button{padding:14px 18px;width:100%;margin-top:12px}.start-error{color:#b42318!important;min-height:20px;margin:12px 0 0}.contact-summary{white-space:pre-wrap;overflow-wrap:anywhere}
     @media(max-width:780px){.attendance-layout{grid-template-columns:minmax(0,1fr);gap:16px}.attendance-mascot{position:static;justify-self:start}.attendance-mascot img{width:405px;max-width:100%;height:auto}.attendance-content{width:100%}}
     @media(max-width:640px){.wrap{padding:0}.start-screen{padding:22px;border-left:0;border-right:0}.panel{border-left:0;border-right:0}.msg{max-width:92%}.composer{grid-template-columns:auto 1fr}.composer #send{grid-column:1/3;height:46px}.leadbar{padding-bottom:12px}.leadbtn{width:100%}}
@@ -41,7 +42,7 @@
         <div class="field"><label for="clientName">Nome</label><input id="clientName" autocomplete="name" maxlength="120" required /></div>
         <div class="field"><label for="clientEmail">E-mail</label><input id="clientEmail" type="email" autocomplete="email" maxlength="254" required /></div>
         <div class="field"><label for="clientPhone">Telefone / WhatsApp</label><input id="clientPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="(51) 99999-9999" required /></div>
-        <p>Ao finalizar, confirme na conversa o envio do orçamento e do arquivo à equipe da IDY para receber o retorno.</p>
+        <p>Seus contatos e a conversa serão salvos para a equipe da IDY. Se você ficar 10 minutos sem atividade, a gráfica receberá um aviso para ajudar a continuar o atendimento. Os arquivos só serão enviados quando você confirmar o encaminhamento na conversa.</p>
         <p id="startError" class="start-error" role="alert" aria-live="polite"></p>
         <button id="startButton" type="submit">Iniciar atendimento</button>
       </form>
@@ -50,11 +51,13 @@
       <div id="chat" role="log" aria-live="polite"></div>
       <div id="status" class="status">Pronto.</div>
       <div id="filetag" class="filetag"></div>
+      <div id="saveStatus" class="status" role="status"></div>
       <div class="composer">
         <button class="attach" id="attach" type="button" title="Anexar arte ou logo" aria-label="Anexar arte ou logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.5 6.5-7 7a3.5 3.5 0 0 0 5 5L20 10a5 5 0 0 0-7-7L4.5 11.5a6.5 6.5 0 0 0 9 9l6-6"/></svg></button>
         <textarea id="message" placeholder="Digite sua mensagem..." disabled></textarea>
         <button id="send" type="button" aria-label="Enviar mensagem" disabled><span>Enviar</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 3-6 18-4-8-8-4Z"/><path d="m21 3-10 10"/></svg></button>
       </div>
+      <div class="art-tools"><button id="createArtwork" type="button" disabled>Criar proposta de arte</button><button id="improveArtwork" type="button" disabled>Melhorar minha arte</button><small>Peça uma proposta visual ou mudanças na imagem. As prévias precisam de conferência da IDY antes da produção.</small></div>
     </div>
     <div class="diagnostic"><button id="health">Testar conexão</button><span id="healthResult"></span></div>
     </div>
@@ -70,6 +73,7 @@
     <input type="text" name="whatsapp" />
     <textarea name="resumo"></textarea>
     <input type="file" name="arte" />
+    <input type="file" name="proposta" />
   </form>
 
 <script>
@@ -92,6 +96,18 @@ let registered=false;
 let retryAvailable=false;
 let previewUrl=null;
 let previewImage=null;
+let generatedFile=null;
+let proposalUrl=null;
+let proposalImage=null;
+let proposalDownload=null;
+let artworkBusy=false;
+let partialTicket=null;
+let partialStartId=null;
+let partialSequence=0;
+let partialSaving=Promise.resolve();
+const saveStatus=document.getElementById('saveStatus');
+const createArtworkButton=document.getElementById('createArtwork');
+const improveArtworkButton=document.getElementById('improveArtwork');
 
 document.getElementById('startForm').addEventListener('submit',event=>{
   event.preventDefault();
@@ -105,13 +121,32 @@ document.getElementById('startForm').addEventListener('submit',event=>{
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){error.textContent='Informe um e-mail válido.';document.getElementById('clientEmail').focus();return;}
   if(phoneDigits.length<10||phoneDigits.length>15){error.textContent='Informe um telefone válido com DDD.';document.getElementById('clientPhone').focus();return;}
   clientContact={nome,email,whatsapp};
+  partialStartId=crypto.randomUUID();
   error.textContent='';
   document.getElementById('startScreen').hidden=true;
   document.getElementById('chatPanel').hidden=false;
   input.disabled=false;send.disabled=false;
+  updateArtworkControls();
   addMsg('Olá, '+nome+'! Sou o atendimento virtual da IDY Gráfica. O que você precisa?\n\nQuando estiver tudo certo, escreva “pode encaminhar” para enviar seu atendimento à equipe da IDY.');
+  queuePartialSave();
   input.focus();
 });
+
+function queuePartialSave(action='save'){
+  if(!clientContact)return Promise.resolve();
+  const snapshot={action,sequence:++partialSequence,history:history.slice(-200).map(m=>({...m})),files:[selectedFile?.name,generatedFile?.name].filter(Boolean)};
+  partialSaving=partialSaving.catch(()=>{}).then(async()=>{
+    try{
+      if(!partialTicket){
+        const r=await fetch('/.netlify/functions/partial-lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start',startId:partialStartId,contact:clientContact}),signal:AbortSignal.timeout(10000)});
+        const data=await r.json();if(!r.ok||!data.ok||!data.ticket)throw Error();partialTicket=data.ticket;
+      }
+      const r=await fetch('/.netlify/functions/partial-lead',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+partialTicket},body:JSON.stringify(snapshot),signal:AbortSignal.timeout(10000)});
+      if(!r.ok||(await r.json()).ok!==true)throw Error();
+      saveStatus.textContent='Conversa salva para a equipe da IDY.';
+    }catch{saveStatus.textContent='Salvamento automático não confirmado. Você pode continuar e confirmar o encaminhamento no chat.';}
+  });return partialSaving;
+}
 
 function addMsg(text,who='bot'){
   const el=document.createElement('div');el.className='msg '+who;
@@ -136,17 +171,75 @@ function showArtPreview(file,bubble){
   bubble.appendChild(image);
 }
 
+function updateArtworkControls(){
+  const busy=!clientContact||asking||submitting||artworkBusy||registered;
+  createArtworkButton.disabled=busy;
+  improveArtworkButton.disabled=busy||!['image/jpeg','image/png'].includes((generatedFile||selectedFile)?.type);
+}
+createArtworkButton.addEventListener('click',()=>{if(createArtworkButton.disabled)return;input.value='Crie uma nova arte: ';input.focus();});
+improveArtworkButton.addEventListener('click',()=>{if(improveArtworkButton.disabled)return;input.value='Melhore minha arte: ';input.focus();});
+
+function artworkMode(text){
+  const value=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  if(!/\b(arte|layout|cartao|cartoes|imagem|logo|fachada|proposta|banner)\b/.test(value))return null;
+  if(/^(melhore|melhorar|modernize|modernizar|atualize|deixe|pode (melhorar|modernizar)|quero (melhorar|modernizar|atualizar))\b/.test(value))return 'edit';
+  if(/^(crie|criar|cria|faca|faz|quero (criar|uma nova arte|uma proposta)|pode (criar|fazer))\b/.test(value))return 'create';
+  return null;
+}
+async function encodeImageReference(file){
+  const bitmap=await createImageBitmap(file),scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+  const data=canvas.toDataURL('image/jpeg',.85);if(data.length>2600000)throw new Error('A imagem está grande demais para preparar a prévia. Use uma versão menor para a criação.');return data;
+}
+async function requestArtwork(brief,mode){
+  if(registered){addMsg('Seu atendimento já foi encaminhado. A equipe da IDY pode ajudar a complementar a arte.');return;}
+  const reference=generatedFile||selectedFile;
+  if(mode==='edit'&&!['image/jpeg','image/png'].includes(reference?.type)){addMsg('Para melhorar a arte, anexe uma imagem JPG ou PNG. Você também pode pedir uma nova proposta do zero.');return;}
+  artworkBusy=true;handoffOffered=false;send.disabled=true;input.disabled=true;attach.disabled=true;updateArtworkControls();
+  statusEl.textContent='Preparando sua proposta visual...';addMsg('Vou preparar uma prévia da arte. Ela aparecerá aqui na conversa para você conferir.');
+  let ticket=null,completed=false;
+  try{
+    const image=mode==='edit'?await encodeImageReference(reference):undefined;
+    const response=await fetch('/.netlify/functions/artwork',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,brief,image})});
+    const job=await response.json().catch(()=>({}));if(!response.ok||!job.ok||!job.ticket)throw new Error(job.error||'Não consegui iniciar a criação da prévia.');ticket=job.ticket;
+    let result;const deadline=Date.now()+240000;
+    while(Date.now()<deadline){
+      await new Promise(resolve=>setTimeout(resolve,2500));
+      const poll=await fetch('/.netlify/functions/artwork',{headers:{Authorization:'Bearer '+ticket}}),data=await poll.json().catch(()=>({}));
+      if(!poll.ok||!data.ok)throw new Error(data.error||'Não consegui consultar a prévia.');
+      if(data.status==='completed'&&data.image){result=data.image;break;}
+    }
+    if(!result)throw new Error('A criação está demorando mais que o esperado. Você pode pedir outra proposta ou encaminhar seu pedido à equipe.');
+    const match=result.match(/^data:image\/(jpeg|png);base64,([A-Za-z0-9+/]+={0,2})$/);if(!match||result.length>4000000)throw new Error('Não foi possível mostrar a imagem gerada.');
+    const bytes=Uint8Array.from(atob(match[2]),c=>c.charCodeAt(0));generatedFile=new File([bytes],'proposta-idy.'+(match[1]==='jpeg'?'jpg':'png'),{type:'image/'+match[1]});
+    completed=true;
+    if(proposalImage)proposalImage.remove();if(proposalDownload)proposalDownload.remove();if(proposalUrl)URL.revokeObjectURL(proposalUrl);proposalUrl=URL.createObjectURL(generatedFile);
+    const bubble=addMsg('Preparei uma proposta visual. Confira os textos, cores e informações. Você pode pedir outras mudanças ou dizer “pode encaminhar” para enviar a proposta à equipe da IDY. A arte ainda precisa ser conferida pela gráfica antes da produção.');
+    proposalImage=document.createElement('img');proposalImage.className='art-preview';proposalImage.alt='Proposta visual criada para aprovação';proposalImage.src=proposalUrl;bubble.appendChild(proposalImage);
+    const download=document.createElement('a');download.className='proposal-download';download.href=proposalUrl;download.download=generatedFile.name;download.textContent='Baixar prévia';bubble.appendChild(download);proposalDownload=download;
+    history.push({role:'assistant',content:'Uma proposta visual foi preparada para aprovação do cliente: '+generatedFile.name+'.'});
+    queuePartialSave();
+    statusEl.textContent='Prévia pronta para conferir.';
+  }catch(error){addMsg(error.message||'Não consegui preparar a prévia agora.');statusEl.textContent='A prévia não foi concluída.';}
+  finally{
+    if(ticket&&completed)fetch('/.netlify/functions/artwork',{method:'DELETE',headers:{Authorization:'Bearer '+ticket}}).catch(()=>{});
+    artworkBusy=false;send.disabled=false;input.disabled=false;attach.disabled=false;updateArtworkControls();input.focus();
+  }
+}
+
 function offerHandoff(){
-  if(asking||submitting||registered||handoffOffered)return;
-  const question='Precisa de mais alguma coisa? Se não precisar, encaminho seu orçamento'+(selectedFile?' e o arquivo selecionado':'')+' à equipe da IDY para entrar em contato contigo. Você pode responder “pode encaminhar” ou continuar tirando suas dúvidas.';
+  if(asking||submitting||artworkBusy||registered||handoffOffered)return;
+  const question='Precisa de mais alguma coisa? Se não precisar, encaminho seu orçamento'+(selectedFile||generatedFile?' e os arquivos selecionados':'')+' à equipe da IDY para entrar em contato contigo. Você pode responder “pode encaminhar” ou continuar tirando suas dúvidas.';
   addMsg(question);history.push({role:'assistant',content:question});handoffOffered=true;handoffQueued=false;
+  queuePartialSave();
 }
 
 function isHandoffConfirmation(text){
   const raw=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   if(handoffOffered&&/^nao\s*[,;.]\s*pode (encaminhar|enviar|finalizar)[.!]?\s*$/.test(raw))return true;
   const normalized=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
-  const explicit=['pode encaminhar','pode enviar','pode finalizar','pode encaminhar para a idy','pode enviar para a idy','sim pode encaminhar','sim pode enviar','sim pode finalizar','pode encaminhar sim','pode enviar sim','tudo certo pode encaminhar','tudo certo pode enviar'];
+  const explicit=['pode encaminhar','pode enviar','pode finalizar','pode encaminhar para a idy','pode enviar para a idy','pode encaminhar esta proposta','pode encaminhar a proposta','sim pode encaminhar','sim pode enviar','sim pode finalizar','pode encaminhar sim','pode enviar sim','tudo certo pode encaminhar','tudo certo pode enviar'];
   const finished=['nao','nao obrigado','nao obrigada','nao preciso de mais nada','nao preciso de nada','nao mais nada','nao precisa','so isso','somente isso','tudo certo','esta tudo certo','ta tudo certo','pode sim'];
   // “Não pode enviar” é recusa, mesmo que a conversa esteja aguardando confirmação.
   if(normalized==='nao pode encaminhar'||normalized==='nao pode enviar')return false;
@@ -154,46 +247,51 @@ function isHandoffConfirmation(text){
 }
 
 async function ask(){
-  const text=input.value.trim();if(!clientContact||!text||asking||submitting)return;
+  const text=input.value.trim();if(!clientContact||!text||asking||submitting||artworkBusy)return;
   const confirmed=isHandoffConfirmation(text);
   addMsg(text,'user');history.push({role:'user',content:text});input.value='';
+  queuePartialSave();
+  const mode=artworkMode(text);if(mode){await requestArtwork(text,mode);return;}
   if(confirmed){
     if(registered){addMsg('Seu atendimento já foi registrado para a equipe da IDY. Não é necessário enviar novamente.');return;}
     handoffOffered=false;await submitConversation();return;
   }
-  handoffOffered=false;retryAvailable=false;asking=true;send.disabled=true;statusEl.textContent='Respondendo...';
+  handoffOffered=false;retryAvailable=false;asking=true;send.disabled=true;updateArtworkControls();statusEl.textContent='Respondendo...';
   let answered=false;
   try{
     const r=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
     const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`HTTP ${r.status}`);
-    const answer=data.answer||'Não consegui gerar uma resposta.';addMsg(answer,'bot');history.push({role:'assistant',content:answer});statusEl.textContent='Pronto.';answered=true;
-  }catch(e){addMsg('Erro de conexão: '+e.message,'bot');statusEl.textContent='Falha na conexão.';}finally{asking=false;send.disabled=false;input.focus();if(selectedFile&&(answered||handoffQueued))offerHandoff();}
+    const answer=data.answer||'Não consegui gerar uma resposta.';addMsg(answer,'bot');history.push({role:'assistant',content:answer});queuePartialSave();statusEl.textContent='Pronto.';answered=true;
+  }catch(e){addMsg('Erro de conexão: '+e.message,'bot');statusEl.textContent='Falha na conexão.';}finally{asking=false;send.disabled=false;updateArtworkControls();input.focus();if(selectedFile&&(answered||handoffQueued))offerHandoff();}
 }
 
 send.addEventListener('click',ask);input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask();}});
 
-attach.addEventListener('click',()=>{if(clientContact&&!submitting)fileInput.click();});
+attach.addEventListener('click',()=>{if(clientContact&&!submitting&&!artworkBusy)fileInput.click();});
 fileInput.addEventListener('change',()=>{
-  if(!clientContact||submitting)return;
+  if(!clientContact||submitting||artworkBusy)return;
   const f=fileInput.files?.[0];if(!f)return;
   if(f.size>8*1024*1024){alert('O arquivo pode ter no máximo 8 MB.');fileInput.value='';return;}
-  selectedFile=f;filetag.textContent='Arte selecionada: '+f.name;const bubble=addMsg('Arquivo selecionado: '+f.name,'user');showArtPreview(f,bubble);history.push({role:'user',content:'O cliente selecionou uma arte/arquivo chamado '+f.name+'.'});
+  generatedFile=null;if(proposalImage){proposalImage.remove();proposalImage=null;}if(proposalDownload){proposalDownload.remove();proposalDownload=null;}if(proposalUrl){URL.revokeObjectURL(proposalUrl);proposalUrl=null;}
+  selectedFile=f;filetag.textContent='Arte selecionada: '+f.name;const bubble=addMsg('Arquivo selecionado: '+f.name,'user');showArtPreview(f,bubble);history.push({role:'user',content:'O cliente selecionou uma arte/arquivo chamado '+f.name+'.'});updateArtworkControls();
   handoffOffered=false;handoffQueued=true;offerHandoff();
 });
 
 async function submitConversation(){
-  if(!clientContact||submitting||registered||asking)return;
+  if(!clientContact||submitting||registered||asking||artworkBusy)return;
   const {nome,email,whatsapp}=clientContact;
-  submitting=true;send.disabled=true;input.disabled=true;attach.disabled=true;retryAvailable=false;
+  submitting=true;send.disabled=true;input.disabled=true;attach.disabled=true;retryAvailable=false;updateArtworkControls();
   statusEl.textContent='Registrando seu atendimento...';
   addMsg('Estou enviando seu atendimento'+(selectedFile?' e o arquivo selecionado':'')+' à equipe da IDY.');
   try{
     const conversation=history.map(m=>(m.role==='user'?'CLIENTE: ':'ATENDENTE: ')+m.content).join('\n\n');
-    const resumo='Cliente: '+nome+'\nE-mail: '+email+'\nWhatsApp: '+whatsapp+'\n\n'+(conversation||'Atendimento sem histórico.');
-    const fd=new FormData();fd.append('form-name','atendimento-idy');fd.append('nome',nome);fd.append('email',email);fd.append('whatsapp',whatsapp);fd.append('resumo',resumo);if(selectedFile)fd.append('arte',selectedFile,selectedFile.name);
+    const resumo='Cliente: '+nome+'\nE-mail: '+email+'\nWhatsApp: '+whatsapp+(generatedFile?'\nProposta visual para conferir: '+generatedFile.name:'')+'\n\n'+(conversation||'Atendimento sem histórico.');
+    const fd=new FormData();fd.append('form-name','atendimento-idy');fd.append('nome',nome);fd.append('email',email);fd.append('whatsapp',whatsapp);fd.append('resumo',resumo);if(selectedFile)fd.append('arte',selectedFile,selectedFile.name);if(generatedFile)fd.append('proposta',generatedFile,generatedFile.name);
+    await queuePartialSave('submitting');
     const r=await fetch('/',{method:'POST',body:fd});if(!r.ok)throw new Error('Não foi possível registrar o atendimento.');
 
     registered=true;
+    await queuePartialSave('complete');
     statusEl.textContent='Atendimento registrado. Avisando a equipe...';
     addMsg('Seu atendimento foi registrado para a IDY Gráfica. A equipe poderá entrar em contato pelos dados que você informou.');
     try{
@@ -204,7 +302,7 @@ async function submitConversation(){
         nome,
         whatsapp,
         resumo:resumo||'Atendimento sem histórico.',
-        arquivo:selectedFile?selectedFile.name:''
+        arquivo:[selectedFile?.name,generatedFile?.name].filter(Boolean).join(' + ')
       })
     });
     const result=await notification.json().catch(()=>({}));
@@ -215,9 +313,10 @@ async function submitConversation(){
       addMsg('O registro está salvo, mas não consegui confirmar o aviso pelo WhatsApp. Não é necessário enviar seu atendimento novamente.');
     }
   }catch{
+    queuePartialSave('resume');
     retryAvailable=true;statusEl.textContent='Não foi possível confirmar o registro.';
     addMsg('Não consegui confirmar o registro do atendimento. Seu arquivo continua selecionado. Para repetir o envio, escreva “tentar novamente”.');
-  }finally{submitting=false;send.disabled=false;input.disabled=false;attach.disabled=false;input.focus();}
+  }finally{submitting=false;send.disabled=false;input.disabled=false;attach.disabled=false;updateArtworkControls();input.focus();}
 }
 
 document.getElementById('health').addEventListener('click',async()=>{healthResult.textContent='Testando...';try{const r=await fetch('/.netlify/functions/health');const d=await r.json();healthResult.textContent=`${r.status} — ${d.status}${d.hasKey===false?' — OPENAI_API_KEY ausente':''}`;}catch(e){healthResult.textContent='Falha ao alcançar a função Netlify.';}});

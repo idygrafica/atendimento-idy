@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+import {webcrypto} from 'node:crypto';
 
 class Element {
   value='';textContent='';children=[];hidden=false;disabled=false;events=new Map();
@@ -12,15 +13,16 @@ class Element {
   async trigger(name,event={}){return this.events.get(name)?.(event)}
   focus(){}click(){return this.trigger('click')}showModal(){this.open=true}close(){this.open=false}
 }
-async function page(fetchImpl=async()=>Response.json({answer:'Resposta de teste'})){
+async function page(fetchImpl=async()=>Response.json({answer:'Resposta de teste'}),{mockPartial=true}={}){
   const html=await readFile(new URL('index.html',import.meta.url),'utf8'),elements=new Map();
   for(const match of html.matchAll(/<[^>]+id="([^"]+)"[^>]*>/g)){
     const el=new Element();el.hidden=/\bhidden\b/.test(match[0]);el.disabled=/\bdisabled\b/.test(match[0]);elements.set(match[1],el);
   }
   const get=id=>{assert(elements.has(id),'Elemento '+id);return elements.get(id)};
-  const context=vm.createContext({document:{getElementById:get,createElement:()=>new Element()},fetch:fetchImpl,FormData,URL,console,encodeURIComponent,alert:message=>{throw Error(message)}});
+  const wrappedFetch=(url,options)=>mockPartial&&url==='/.netlify/functions/partial-lead'?Promise.resolve(Response.json({ok:true,ticket:'mock-ticket'})):fetchImpl(url,options);
+  const context=vm.createContext({document:{getElementById:get,createElement:()=>new Element()},fetch:wrappedFetch,FormData,File,Uint8Array,atob,AbortSignal,URL,crypto:webcrypto,console,encodeURIComponent,setTimeout:fn=>fn(),alert:message=>{throw Error(message)}});
   vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
-  return {get,html,async start(){get('clientName').value='Cliente de teste';get('clientEmail').value='cliente@example.invalid';get('clientPhone').value='(51) 99999-0000';await get('startForm').trigger('submit',{preventDefault(){}})}};
+  return {get,html,context,flush:()=>vm.runInContext('partialSaving',context),async start(){get('clientName').value='Cliente de teste';get('clientEmail').value='cliente@example.invalid';get('clientPhone').value='(51) 99999-0000';await get('startForm').trigger('submit',{preventDefault(){}});await vm.runInContext('partialSaving',context)}};
 }
 
 test('a conversa e o envio ficam bloqueados antes de informar os contatos',async()=>{
@@ -77,7 +79,7 @@ test('um arquivo selecionado durante a resposta oferece encaminhamento depois de
   let release;const wait=new Promise(resolve=>release=resolve);const p=await page(async()=>{await wait;return Response.json({answer:'Resposta'})});await p.start();p.get('message').value='Meu pedido';const pending=p.get('send').trigger('click');await attach(p);assert(!p.get('chat').children.at(-1).children[0]);release();await pending;assert.match(p.get('chat').children.at(-1).children[0].textContent,/Precisa de mais alguma coisa/);
 });
 test('confirmações simultâneas geram apenas um registro e um aviso',async()=>{
-  const calls=[];let release;const wait=new Promise(resolve=>release=resolve);const p=await page(async url=>{calls.push(url);if(url==='/')await wait;return Response.json({ok:true})});await p.start();await attach(p);p.get('message').value='Pode enviar';const pending=p.get('send').trigger('click');await say(p,'Pode enviar');assert.deepEqual(calls,['/']);assert.equal(p.get('attach').disabled,true);release();await pending;assert.deepEqual(calls,['/','/.netlify/functions/notify-idy-whatsapp']);assert.equal(p.get('send').disabled,false);
+  const calls=[];let release;const wait=new Promise(resolve=>release=resolve);const p=await page(async url=>{calls.push(url);if(url==='/')await wait;return Response.json({ok:true})});await p.start();await attach(p);p.get('message').value='Pode enviar';const pending=p.get('send').trigger('click');await say(p,'Pode enviar');await p.flush();assert.deepEqual(calls,['/']);assert.equal(p.get('attach').disabled,true);release();await pending;assert.deepEqual(calls,['/','/.netlify/functions/notify-idy-whatsapp']);assert.equal(p.get('send').disabled,false);
 });
 test('falha de registro não promete envio e permite repetição explícita com o arquivo',async()=>{
   let forms=0;const p=await page(async url=>{if(url==='/'&&++forms===1)return new Response('Falhou',{status:503});return Response.json({ok:true})});await p.start();await attach(p);await say(p,'Pode encaminhar');assert.match(p.get('status').textContent,/Não foi possível confirmar/);await say(p,'tentar novamente');assert.equal(forms,2);assert.match(p.get('status').textContent,/equipe avisada/);
@@ -94,4 +96,38 @@ test('a imagem aparece na conversa sem upload antecipado e seu URL é liberado a
   p.get('fileInput').files=[new File(['imagem'],'cartao.jpg',{type:'image/jpeg'})];await p.get('fileInput').trigger('change');
   const bubble=p.get('chat').children.at(-2),image=bubble.children[0];assert.match(image.src,/^blob:/);assert.match(image.alt,/cartao.jpg/);assert.equal(calls,0);
   await attach(p);assert.equal(bubble.children.length,0);assert.equal(calls,0);
+});
+
+const sampleImage='data:image/png;base64,'+Buffer.from([137,80,78,71,13,10,26,10,0,1]).toString('base64');
+test('criação mostra uma proposta baixável e encaminha original e proposta somente após aprovação',async()=>{
+  const calls=[];let form;
+  const p=await page(async(url,options={})=>{
+    calls.push({url,options});
+    if(url==='/.netlify/functions/artwork')return Response.json(options.method==='POST'?{ok:true,ticket:'test-ticket'}:options.method==='DELETE'?{ok:true}:{ok:true,status:'completed',image:sampleImage});
+    if(url==='/')form=options.body;return Response.json({ok:true});
+  });await p.start();await attach(p);await say(p,'Crie uma nova arte: cartão moderno para minha loja.');
+  assert.match(p.get('status').textContent,/Prévia pronta/);assert.equal(form,undefined);assert.equal(p.get('chat').children.at(-1).children[1].alt,'Proposta visual criada para aprovação');assert.equal(p.get('chat').children.at(-1).children[2].download,'proposta-idy.png');
+  await say(p,'Pode encaminhar esta proposta');assert.equal(form.get('arte').name,'arte.pdf');assert.equal(form.get('proposta').name,'proposta-idy.png');assert.match(form.get('resumo'),/Proposta visual para conferir/);
+});
+test('edição usa a imagem de referência sem substituir o anexo original',async()=>{
+  let payload,form;const p=await page(async(url,options={})=>{
+    if(url==='/.netlify/functions/artwork'){if(options.method==='POST')payload=JSON.parse(options.body);return Response.json(options.method==='POST'?{ok:true,ticket:'test-ticket'}:options.method==='DELETE'?{ok:true}:{ok:true,status:'completed',image:sampleImage});}
+    if(url==='/')form=options.body;return Response.json({ok:true});
+  });await p.start();p.get('fileInput').files=[new File(['original-preservado'],'cartao-original.png',{type:'image/png'})];await p.get('fileInput').trigger('change');
+  vm.runInContext('encodeImageReference=async()=>'+JSON.stringify(sampleImage),p.context);await say(p,'Melhore minha arte: mantenha o logo e ajuste as cores.');assert.equal(payload.mode,'edit');assert.equal(payload.image,sampleImage);
+  await say(p,'Pode encaminhar');assert.equal(await form.get('arte').text(),'original-preservado');assert.equal(form.get('proposta').name,'proposta-idy.png');
+});
+test('pergunta de preço não gera imagem e PDF não é enviado como referência de edição',async()=>{
+  const calls=[];const p=await page(async url=>{calls.push(url);return Response.json({answer:'Vamos ver o orçamento.'})});await p.start();await attach(p);await say(p,'Quanto custa criar uma arte?');assert.deepEqual(calls,['/.netlify/functions/chat']);await say(p,'Melhore minha arte: aumente o contraste.');assert.equal(calls.length,1);assert.match(p.get('chat').children.at(-1).children[0].textContent,/JPG ou PNG/);
+});
+test('falha de criação é informada sem proposta fictícia e conserva o encaminhamento',async()=>{
+  let form;const p=await page(async(url,options)=>{if(url==='/.netlify/functions/artwork')return Response.json({ok:false,error:'Criação indisponível.'},{status:503});if(url==='/')form=options.body;return Response.json({ok:true})});await p.start();await attach(p);await say(p,'Crie uma arte moderna para meu cartão.');assert.match(p.get('status').textContent,/não foi concluída/);assert.equal(p.get('send').disabled,false);await say(p,'Pode encaminhar');assert.equal(form.get('proposta'),null);assert.equal(form.get('arte').name,'arte.pdf');
+});
+test('salvamento parcial inclui contatos e conversa, sem upload nem aviso direto',async()=>{
+  const calls=[];const p=await page(async(url,options)=>{calls.push({url,body:options?.body});return Response.json(url==='/.netlify/functions/chat'?{answer:'Resposta'}:{ok:true,ticket:'test-ticket'})},{mockPartial:false});await p.start();await say(p,'Preciso de cartões');await p.flush();
+  const partial=calls.filter(c=>c.url==='/.netlify/functions/partial-lead').map(c=>JSON.parse(c.body));assert.equal(partial[0].contact.email,'cliente@example.invalid');assert.equal(partial.at(-1).history.length,2);assert(!calls.some(c=>c.url==='/'||c.url.includes('notify-idy')));
+  await say(p,'Pode encaminhar');await p.flush();assert(partial.length>=2);const last=calls.filter(c=>c.url==='/.netlify/functions/partial-lead').map(c=>JSON.parse(c.body));assert(last.some(c=>c.action==='submitting'));assert(last.some(c=>c.action==='complete'));
+});
+test('falha de salvamento automático é visível e não bloqueia a IA',async()=>{
+  const p=await page(async url=>url==='/.netlify/functions/partial-lead'?new Response('Falhou',{status:503}):Response.json({answer:'Resposta'}) ,{mockPartial:false});await p.start();assert.match(p.get('saveStatus').textContent,/não confirmado/);await say(p,'Quero cartões');assert.equal(p.get('status').textContent,'Pronto.');
 });
