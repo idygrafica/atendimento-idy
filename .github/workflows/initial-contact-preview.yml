@@ -1,34 +1,31 @@
-name: Diagnose artwork runtime before publishing
+name: Publish verified artwork and idle recovery
 on:
   push:
     branches: [codex/tela-inicial-atendimento]
 permissions:
   contents: read
+concurrency:
+  group: atendimento-idy-page-publication
+  cancel-in-progress: false
 jobs:
-  diagnose:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Read preview runtime responses without sending messages
-        run: |
-          node --input-type=module <<'JS'
-          const base='https://6acc350cf7fe4f3aa0f373ea--atendimento-idy.netlify.app/';
-          for(const name of ['health','artwork','partial-lead']){
-           const r=await fetch(base+'.netlify/functions/'+name),body=await r.text();
-           console.log('RUNTIME_DIAGNOSTIC '+JSON.stringify({name,status:r.status,body:body.slice(0,1800)}));
-          }
-          JS
-      - name: Read only new function runtime metadata
+      - name: Validate artwork and idle recovery without sending messages
+        run: node --test --test-isolation=none flow.test.mjs artwork.test.mjs partial-leads.test.mjs
+      - name: Verify real draft generation and preserve existing functions before publishing
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
-        run: |
-          node --input-type=module <<'JS'
-          const r=await fetch('https://api.netlify.com/api/v1/deploys/6acc350cf7fe4f3aa0f373ea',{headers:{Authorization:'Bearer '+process.env.NETLIFY_AUTH_TOKEN}});
-          const d=await r.json();
-          console.log('NEW_FUNCTION_METADATA '+JSON.stringify(d.available_functions.filter(f=>['artwork','partial-lead','idle-leads'].includes(f.n)).map(f=>({name:f.n,runtime:f.r,build:f.bd}))));
-          JS
+        run: node deploy-artwork.mjs
+      - name: Store sanitized publication report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artwork-publication-report
+          path: .netlify/page-publication.json
