@@ -30,7 +30,7 @@ jobs:
           const expectedPrevious='6ac2d52dce190d84abeb3ac1',base='https://atendimento-idy.netlify.app/';
           async function api(path,method='GET',body,contentType='application/json'){
            const r=await fetch('https://api.netlify.com/api/v1'+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':contentType},body:body===undefined?undefined:(contentType==='application/json'?JSON.stringify(body):body),signal:AbortSignal.timeout(30000)});
-           assert(r.ok,'Netlify '+method+' HTTP '+r.status);return r.json();
+           if(!r.ok){let message='';try{const e=await r.json();message=String(e.message||e.error||'').replaceAll(token,'[redacted]').slice(0,350)}catch{}throw new Error('Netlify '+method+' HTTP '+r.status+' '+message)}return r.json();
           }
           const site=await api('/sites/'+siteId);assert.equal(site.name,'atendimento-idy');assert.equal(site.id,siteId);assert.equal(site.published_deploy.id,expectedPrevious,'Outra publicação ocorreu; não sobrescrever');
           const previous=await api('/deploys/'+expectedPrevious);assert.equal(previous.state,'ready');assert(!previous.edge_functions_present,'Preservação de edge functions precisa de leitura adicional');
@@ -40,7 +40,7 @@ jobs:
           assert(files['index.html']);
           for(const fn of oldFunctions){
            assert(fn.n&&fn.d);functions[fn.n]=fn.d;
-           configs[fn.n]={build_data:fn.bd||{},region:fn.rg};
+           configs[fn.n]={build_data:fn.bd||{}};
            if(fn.dn)configs[fn.n].display_name=fn.dn;
            if(fn.g)configs[fn.n].generator=fn.g;
            if(fn.m)configs[fn.n].memory=fn.m;
@@ -53,7 +53,7 @@ jobs:
           const html=fs.readFileSync('index.html','utf8'),sha=createHash('sha1').update(html).digest('hex');files['index.html']=sha;
           fs.mkdirSync('.netlify',{recursive:true});const report={site:'atendimento-idy',previousDeploy:expectedPrevious,previousUrl:'https://'+expectedPrevious+'--atendimento-idy.netlify.app',sourceCommit:process.env.GITHUB_SHA,state:'preparing',functions:oldFunctions.map(f=>({name:f.n,digest:f.d})),unchangedFiles:oldFiles.length-1};
           fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
-          const healthBefore=await fetch(base+'.netlify/functions/health');const healthStatus=healthBefore.status;
+          const healthBefore=await fetch(base+'.netlify/functions/health');const healthStatus=healthBefore.status;const previousHealth=await healthBefore.json().catch(()=>({}));
           const draft=await api('/sites/'+siteId+'/deploys','POST',{draft:true,files,functions,functions_config:configs,function_schedules:previous.function_schedules||[],branch:'codex/tela-inicial-atendimento'},'application/json');
           report.draftDeploy=draft.id;fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
           console.log('DRAFT_CREATED '+JSON.stringify({id:draft.id,requiredFiles:draft.required,requiredFunctions:draft.required_functions}));
@@ -73,16 +73,19 @@ jobs:
           assert.equal((await fetch(draftUrl+'.netlify/functions/health')).status,healthStatus,'Health mudou na versão de teste');
           const latest=await api('/sites/'+siteId);assert.equal(latest.published_deploy.id,expectedPrevious,'Outra publicação ocorreu; não sobrescrever');
           console.log('DRAFT_READY_PRESERVING_FUNCTIONS '+JSON.stringify({id:draft.id,count:oldFunctions.length}));
-          await api('/sites/'+siteId+'/deploys/'+draft.id+'/restore','POST');
+          const production=await api('/sites/'+siteId+'/deploys','POST',{draft:false,files,functions,functions_config:configs,function_schedules:previous.function_schedules||[]});
+          assert((production.required_functions||[]).length===0&&(production.required||[]).length===0,'A produção deve usar somente os arquivos e funções já verificados');
           let published=false;
           for(let attempt=1;attempt<=30;attempt++){
            const current=await api('/sites/'+siteId);const response=await fetch(base+'?published='+Date.now()),body=await response.text();
-           if(current.published_deploy.id===draft.id&&response.ok&&JSON.stringify(scripts(body))===JSON.stringify(scripts(html))){published=true;break}
+           if(current.published_deploy.id===production.id&&response.ok&&JSON.stringify(scripts(body))===JSON.stringify(scripts(html))){published=true;break}
            await new Promise(r=>setTimeout(r,2000));
           }
           assert(published,'Publicação ainda não confirmada no endereço público');
           assert.equal((await fetch(base+'.netlify/functions/health')).status,healthStatus);
-          report.state='published';report.publishedDeploy=draft.id;report.publicUrl=base;report.functionsUnchanged=true;fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
+          const finalDeploy=await api('/deploys/'+production.id);assert.deepEqual(sorted(finalDeploy.available_functions),sorted(oldFunctions));
+          const finalHealth=await (await fetch(base+'.netlify/functions/health')).json().catch(()=>({}));assert.equal(finalHealth.hasKey,previousHealth.hasKey,'Configuração da IA mudou');
+          report.state='published';report.publishedDeploy=production.id;report.publicUrl=base;report.functionsUnchanged=true;fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
           console.log('PAGE_PUBLICATION_CONFIRMED '+JSON.stringify(report));
           
           JS
