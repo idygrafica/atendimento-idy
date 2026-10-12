@@ -1,0 +1,32 @@
+name: Audit WhatsApp configuration without publishing
+on:
+  push:
+    branches: [codex/previa-unica-whatsapp]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read configuration metadata without exposing credentials
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.NETLIFY_AUTH_TOKEN,siteId=process.env.NETLIFY_SITE_ID;
+          async function api(path){const r=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw Error('Leitura Netlify HTTP '+r.status);return r.json()}
+          const site=await api('/sites/'+siteId);if(site.name!=='atendimento-idy')throw Error('Projeto incorreto');
+          const entries=await api('/accounts/'+site.account_id+'/env?site_id='+siteId),settings={};
+          for(const key of ['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','META_GRAPH_VERSION','WHATSAPP_LEAD_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_LANGUAGE','WHATSAPP_BUSINESS_ACCOUNT_ID','WHATSAPP_WABA_ID']){
+           const entry=entries.find(e=>e.key===key),value=entry?.values?.find(v=>v.context==='production')||entry?.values?.find(v=>v.context==='all');
+           const safe=['META_GRAPH_VERSION','WHATSAPP_LEAD_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_LANGUAGE'].includes(key);
+           settings[key]={configured:!!entry,productionConfigured:!!value,secret:!!entry?.is_secret,functionsScope:entry?.scopes?.includes('functions')??true,...(safe&&!entry?.is_secret?{value:value?.value}:{})};
+          }
+          console.log('WHATSAPP_CONFIGURATION_READ_ONLY '+JSON.stringify({publishedDeploy:site.published_deploy.id,settings}));
+          console.log('NO_META_MESSAGES_SENT_NO_CONFIGURATIONS_CHANGED');
+          JS
