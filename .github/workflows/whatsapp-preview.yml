@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '24'
       - name: Test quota, attendance, image notifications and existing chat flows
-        run: node --test --test-isolation=none artwork.test.mjs artwork-quota.test.mjs artwork-attendance.test.mjs artwork-notification.test.mjs flow.test.mjs partial-leads.test.mjs
+        run: node --test --test-isolation=none artwork.test.mjs artwork-quota.test.mjs artwork-attendance.test.mjs artwork-notification.test.mjs artwork-completion.test.mjs flow.test.mjs partial-leads.test.mjs
       - name: Verify daily reset independently of the server timezone
         run: TZ=Pacific/Honolulu node --test --test-isolation=none artwork-quota.test.mjs
       - name: Install browser and packaging tools without credentials
@@ -36,8 +36,9 @@ jobs:
           const bundles=await zipFunctions('netlify/functions',process.cwd()+'/.quota-bundles',{config:{'*':{nodeVersion:'24',nodeBundler:'nft'}},archiveFormat:'zip'});
           const artwork=bundles.find(b=>b.name==='artwork'),worker=bundles.find(b=>b.name==='artwork-notifications');assert(artwork&&worker);
           assert.equal(artwork.runtimeAPIVersion,2);assert.equal(worker.runtimeAPIVersion,2);assert.equal(artwork.invocationMode,'stream');
-          const code=execFileSync('python3',['-c','import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print("\\n".join(z.read(n).decode("utf-8",errors="ignore") for n in z.namelist() if n.endswith((".js",".mjs",".cjs"))))',artwork.path],{encoding:'utf8'});
-          for(const marker of ['America/Sao_Paulo','PREVIEW_DAILY_LIMIT','ARTWORK_ALREADY_USED','WHATSAPP_ARTWORK_TEMPLATE_NAME','5551981687562'])assert(code.includes(marker),'Código necessário não incluído: '+marker);
+          const markers=['America/Sao_Paulo','PREVIEW_DAILY_LIMIT','ARTWORK_ALREADY_USED','WHATSAPP_ARTWORK_TEMPLATE_NAME','5551981687562','generations/'];
+          const included=JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys; z=zipfile.ZipFile(sys.argv[1]); code="\\n".join(z.read(n).decode("utf-8",errors="ignore") for n in z.namelist() if n.endswith((".js",".mjs",".cjs"))); print(json.dumps({m:m in code for m in sys.argv[2:]}))',artwork.path,...markers],{encoding:'utf8'}));
+          for(const marker of markers)assert(included[marker],'Código necessário não incluído: '+marker);
           console.log('HUMAN_PREVIEW_NATIVE_BUNDLE_VERIFIED '+JSON.stringify({runtimeAPIVersion:2,invocationMode:'stream',quota:true,attendance:true,notification:true,worker:true}));
           JS
       - name: Save preview screenshots for review

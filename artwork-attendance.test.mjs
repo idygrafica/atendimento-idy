@@ -55,7 +55,7 @@ test('configuração de WhatsApp ausente não impede entregar a imagem nem liber
 });
 test('context.waitUntil entrega a imagem sem esperar a notificação e registra o trabalho para continuar',async()=>{
   let release;const wait=new Promise(resolve=>release=resolve);const f=await setup({whatsappFetch:async url=>{await wait;return Response.json(url.endsWith('/media')?{id:'123123'}:{messages:[{id:'wamid.accepted'}]})}});
-  const work=[],{result}=await complete(f,{waitUntil:promise=>work.push(promise)});assert(result.image);assert.equal(work.length,1);assert.equal(result.notification.state,'pending');release();await Promise.all(work);assert.equal([...f.notifications.values.values()][0].data.state,'accepted');
+  const work=[],{result}=await complete(f,{waitUntil:promise=>work.push(promise)});assert(result.image);assert.equal(work.length,1);assert.equal(result.notification.state,'pending');release();await Promise.all(work);assert.equal([...f.notifications.values.entries()].find(([key])=>key.startsWith('notifications/'))[1].data.state,'accepted');
 });
 test('ticket de atendimento adulterado ou ausente não permite gastar com geração',async()=>{
   const f=await setup();assert.equal((await f.post({attendanceTicket:''})).status,403);assert.equal((await f.post({attendanceTicket:f.attendanceTicket+'a'})).status,403);assert.equal(f.calls.length,0);assert.equal(f.quota.values.size,0);

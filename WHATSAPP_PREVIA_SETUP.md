@@ -52,6 +52,8 @@ A imagem gerada é enviada por multipart para `/{WHATSAPP_PHONE_NUMBER_ID}/media
 
 A notificação entra em uma fila privada e é tentada imediatamente após gerar a prévia. A função agendada `artwork-notifications` (`* * * * *`) continua avisos pendentes ou falhas temporárias confirmadas. No futuro deploy autorizado, esse agendamento precisa ser incluído junto aos atuais; preservar todas as funções já publicadas e compilar os novos módulos de `lib/`.
 
+O servidor também acompanha os trabalhos de geração: se o cliente fechar a página antes de consultar a imagem, a função agendada detecta a conclusão, marca a prévia como utilizada e enfileira a notificação. O aviso conserva os dados do orçamento no momento da geração, evitando misturar outro produto ou preço de uma conversa posterior.
+
 Falta de configuração não bloqueia a imagem do cliente e não libera outra geração. A fila informa `configuration_required`. Rejeições temporárias têm no máximo três tentativas; mídia já enviada é reaproveitada. Timeout ou resposta ambígua no envio não provoca repetição automática, evitando duplicidade e custo adicional. Avisos pendentes são retidos por até 30 dias; a imagem privada é removida após a aceitação da mensagem pela Meta.
 
 `accepted` significa que a Meta aceitou o envio e forneceu um identificador de mensagem. Não prova entrega ao aparelho do responsável. A entrega real deve ser conferida no WhatsApp do responsável e, se necessário, nos eventos/status da integração Meta existente. O webhook atual não foi substituído.
