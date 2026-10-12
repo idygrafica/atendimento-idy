@@ -16,6 +16,7 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
+          META_TEMPLATE_MANAGEMENT_TOKEN: ${{ secrets.META_TEMPLATE_MANAGEMENT_TOKEN }}
           WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
           WHATSAPP_PHONE_NUMBER_ID: ${{ vars.WHATSAPP_PHONE_NUMBER_ID || secrets.WHATSAPP_PHONE_NUMBER_ID }}
           WHATSAPP_BUSINESS_ACCOUNT_ID: ${{ vars.WHATSAPP_BUSINESS_ACCOUNT_ID || secrets.WHATSAPP_BUSINESS_ACCOUNT_ID }}
@@ -26,12 +27,12 @@ jobs:
           META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION }}
         run: |
           node --input-type=module <<'JS'
-          const env=process.env;
+          const env=process.env,metaToken=process.env.META_TEMPLATE_MANAGEMENT_TOKEN||process.env.WHATSAPP_ACCESS_TOKEN;
           async function api(path){const r=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+env.NETLIFY_AUTH_TOKEN},signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('NETLIFY_HTTP_'+r.status);return r.json();}
           const site=await api('/sites/'+env.NETLIFY_SITE_ID);
           if(site.name!=='atendimento-idy')throw Error('WRONG_SITE');
           const entries=await api('/accounts/'+site.account_id+'/env?site_id='+env.NETLIFY_SITE_ID);
-          const keys=['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_BUSINESS_ACCOUNT_ID','WHATSAPP_WABA_ID','META_APP_ID','WHATSAPP_APP_ID','META_BUSINESS_ID','META_GRAPH_VERSION','WHATSAPP_ARTWORK_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_LANGUAGE'];
+          const keys=['META_TEMPLATE_MANAGEMENT_TOKEN','WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_BUSINESS_ACCOUNT_ID','WHATSAPP_WABA_ID','META_APP_ID','WHATSAPP_APP_ID','META_BUSINESS_ID','META_GRAPH_VERSION','WHATSAPP_ARTWORK_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_LANGUAGE'];
           const available={},production={};
           for(const key of keys){
             available[key]=!!env[key];
@@ -39,8 +40,8 @@ jobs:
             production[key]={configured:!!value,protected:!!entry?.is_secret};
           }
           console.log('CONFIGURATION_ACCESS_REPORT '+JSON.stringify({site:'atendimento-idy',publishedDeploy:site.published_deploy.id,githubCredentialsAvailable:available,netlifyProduction:production}));
-          if(env.WHATSAPP_ACCESS_TOKEN){
-            const r=await fetch('https://graph.facebook.com/'+(env.META_GRAPH_VERSION||'v26.0')+'/me/permissions',{headers:{Authorization:'Bearer '+env.WHATSAPP_ACCESS_TOKEN},signal:AbortSignal.timeout(12000)});
+          if(metaToken){
+            const r=await fetch('https://graph.facebook.com/'+(env.META_GRAPH_VERSION||'v26.0')+'/me/permissions',{headers:{Authorization:'Bearer '+metaToken},signal:AbortSignal.timeout(12000)});
             let body;try{body=await r.json()}catch{body={};}
             const permitted=(body.data||[]).filter(p=>p.status==='granted').map(p=>p.permission).filter(p=>['whatsapp_business_management','whatsapp_business_messaging','business_management'].includes(p));
             console.log('META_MANAGEMENT_PERMISSION_REPORT '+JSON.stringify({httpStatus:r.status,permissions:permitted,errorCode:body.error?.code||null}));
