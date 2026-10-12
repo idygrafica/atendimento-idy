@@ -1,4 +1,4 @@
-name: Read original function bundle availability
+name: Read original deploy archive
 on:
   push:
     branches: [codex/tela-inicial-atendimento]
@@ -7,29 +7,29 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Inspect existing bundles without publishing
+      - name: Inspect archive without publication
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
         run: |
           node --input-type=module <<'JS'
-          import assert from 'node:assert/strict';
-          const token=process.env.NETLIFY_AUTH_TOKEN,site=process.env.NETLIFY_SITE_ID;
-          assert(token&&site);
-          async function get(path){const r=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});return r;}
-          const d=await (await get('/deploys/6ac2d52dce190d84abeb3ac1')).json();
-          console.log('EXISTING_DEPLOY_DOWNLOAD '+JSON.stringify({hasSourceZip:d.has_source_zip,functionNames:d.available_functions.map(f=>f.n)}));
-          const health=d.available_functions.find(f=>f.n==='health');
-          const paths=['/deploys/'+d.id+'/functions/health','/sites/'+site+'/functions/health','/functions/'+health.id,'/deploys/'+d.id+'/download'];
-          await Promise.all(paths.map(async path=>{
-           const r=await get(path),type=r.headers.get('content-type'),buffer=Buffer.from(await r.arrayBuffer());
-           let keys;try{const data=JSON.parse(buffer.toString());keys=Object.keys(data)}catch{}
-           console.log('BUNDLE_READ_CHECK '+JSON.stringify({path:path.replace(site,'SITE_ID'),status:r.status,type,bytes:buffer.length,zip:buffer[0]===80&&buffer[1]===75,keys}));
-          }));
-          
+          import fs from 'node:fs';import assert from 'node:assert/strict';import {execFileSync} from 'node:child_process';
+          const token=process.env.NETLIFY_AUTH_TOKEN;
+          const response=await fetch('https://api.netlify.com/api/v1/deploys/6ac2d52dce190d84abeb3ac1/download',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+          assert(response.ok);const info=await response.json();assert(typeof info.url==='string');
+          const zip=await fetch(info.url,{signal:AbortSignal.timeout(30000)});assert(zip.ok);fs.writeFileSync('original-deploy.zip',Buffer.from(await zip.arrayBuffer()));
+          execFileSync('python3',['-c',String.raw`import zipfile,json,hashlib
+          z=zipfile.ZipFile('original-deploy.zip')
+          names=z.namelist()
+          safe=[n for n in names if not any(x in n.lower() for x in ['.env','secret','credential','token'])]
+          functions=[n for n in safe if 'function' in n or n.endswith('.zip')]
+          print('DEPLOY_ARCHIVE_CONTENTS '+json.dumps({'file_count':len(names),'function_files':functions,'root_files':[n for n in safe if '/' not in n][:25]}))
+          for n in functions:
+           if n.endswith('.zip'):
+            print('FUNCTION_ZIP_DIGEST '+json.dumps({'path':n,'sha256':hashlib.sha256(z.read(n)).hexdigest()}))
+          `],{stdio:'inherit'});
           JS
