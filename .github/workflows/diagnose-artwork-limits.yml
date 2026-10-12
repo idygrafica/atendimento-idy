@@ -1,0 +1,39 @@
+name: Validate image quota fix without publishing
+on:
+  push:
+    branches: [codex/corrige-limite-previas]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test quotas, failures, daily renewal and existing chat flows
+        run: node --test --test-isolation=none artwork.test.mjs artwork-quota.test.mjs flow.test.mjs partial-leads.test.mjs
+      - name: Confirm the day boundary is independent of the server timezone
+        run: TZ=Pacific/Honolulu node --test --test-isolation=none artwork-quota.test.mjs
+      - name: Install the runtime packaging tools
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts @netlify/blobs@11.1.4
+          mkdir -p .quota-tooling
+          node -e "require('fs').writeFileSync('.quota-tooling/package.json',JSON.stringify({private:true,dependencies:{'@netlify/zip-it-and-ship-it':'16.3.0'},overrides:{'@netlify/serverless-functions-api':'2.18.0'}}))"
+          npm install --prefix .quota-tooling --no-package-lock --ignore-scripts --no-audit --no-fund
+      - name: Compile native functions and verify the quota module is included
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createRequire} from 'node:module';
+          import {execFileSync} from 'node:child_process';
+          const require=createRequire(process.cwd()+'/.quota-tooling/package.json');
+          const {zipFunctions}=require('@netlify/zip-it-and-ship-it');
+          const bundles=await zipFunctions('netlify/functions',process.cwd()+'/.quota-bundles',{config:{'*':{nodeVersion:'24',nodeBundler:'nft'}},archiveFormat:'zip'});
+          const artwork=bundles.find(b=>b.name==='artwork');assert(artwork);assert.equal(artwork.runtimeAPIVersion,2);
+          const compiled=JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys; z=zipfile.ZipFile(sys.argv[1]); code="\\n".join(z.read(n).decode("utf-8",errors="ignore") for n in z.namelist() if n.endswith((".js",".mjs",".cjs"))); print(json.dumps({"dayWindowIncluded":"America/Sao_Paulo" in code,"quotaIncluded":"PREVIEW_DAILY_LIMIT" in code and "PREVIEW_ATTEMPT_LIMIT" in code}))',artwork.path],{encoding:'utf8'}));
+          assert(compiled.dayWindowIncluded&&compiled.quotaIncluded,'O código de quota precisa acompanhar a função, como módulo ou incorporado pelo compilador');
+          console.log('QUOTA_RUNTIME_BUNDLE_VERIFIED '+JSON.stringify({runtimeAPIVersion:artwork.runtimeAPIVersion,invocationMode:artwork.invocationMode,quotaModuleIncluded:true}));
+          JS
