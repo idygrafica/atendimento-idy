@@ -1,30 +1,31 @@
-name: Check AI credential access without exposing values
+name: Publish verified artwork and idle recovery
 on:
   push:
     branches: [codex/tela-inicial-atendimento]
 permissions:
   contents: read
+concurrency:
+  group: atendimento-idy-page-publication
+  cancel-in-progress: false
 jobs:
-  diagnose:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 12
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Inspect credential metadata and existing notification configuration
+      - name: Validate artwork and idle recovery without sending messages
+        run: node --test --test-isolation=none flow.test.mjs artwork.test.mjs partial-leads.test.mjs
+      - name: Verify real draft generation and preserve existing functions before publishing
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
-        run: |
-          node --input-type=module <<'JS'
-          const token=process.env.NETLIFY_AUTH_TOKEN,siteId=process.env.NETLIFY_SITE_ID;
-          const api=async path=>{const r=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw Error('HTTP '+r.status);return r.json()};
-          const site=await api('/sites/'+siteId);if(site.name!=='atendimento-idy')throw Error('Projeto incorreto');
-          const entries=await api('/accounts/'+site.account_id+'/env?site_id='+siteId);
-          const entry=entries.find(e=>e.key==='OPENAI_API_KEY'),value=entry?.values?.find(v=>v.context==='production')||entry?.values?.find(v=>v.context==='all');
-          console.log('AI_CREDENTIAL_METADATA '+JSON.stringify({configured:!!entry,isSecret:entry?.is_secret,scopes:entry?.scopes,contexts:entry?.values?.map(v=>v.context),looksLikeApiKey:/^sk-/.test(value?.value||'')}));
-          const hooks=await api('/hooks?site_id='+siteId);console.log('NOTIFICATION_HOOK_TYPES '+JSON.stringify(hooks.map(h=>({type:h.type,event:h.event}))));
-          const forms=await api('/sites/'+siteId+'/forms');console.log('FORM_CONFIGURATION '+JSON.stringify(forms.map(f=>({name:f.name,fields:f.fields?.map(x=>x.name)}))));
-          const source=await(await fetch('https://atendimento-idy.netlify.app/netlify/functions/notify-idy-whatsapp.js')).text();console.log('NOTICE_ENV_NAMES '+JSON.stringify([...source.matchAll(/process\.env\.([A-Z0-9_]+)/g)].map(m=>m[1])));
-          JS
+        run: node deploy-artwork.mjs
+      - name: Store sanitized publication report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artwork-publication-report
+          path: .netlify/page-publication.json

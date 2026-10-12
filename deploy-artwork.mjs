@@ -81,81 +81,86 @@ with zipfile.ZipFile(sys.argv[1],'a') as z:
  assert.equal(configs[fn.n].build_data.runtimeAPIVersion,fn.bd.runtimeAPIVersion);
 }
 
-const draft=await api('/sites/'+siteId+'/deploys','POST',{draft:true,files,functions,functions_config:configs,function_schedules:schedules,branch:'codex/tela-inicial-atendimento'},'application/json');
-report.draftDeploy=draft.id;fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
-console.log('DRAFT_CREATED '+JSON.stringify({id:draft.id,requiredFiles:draft.required,requiredFunctions:draft.required_functions}));
-for(const digest of draft.required_functions||[]){const upload=uploads.get(digest);assert(upload,'Pacote de função desconhecido');await api('/deploys/'+draft.id+'/functions/'+upload.name+'?runtime='+encodeURIComponent(upload.runtime)+(upload.invocationMode?'&invocation_mode='+encodeURIComponent(upload.invocationMode):''),'PUT',upload.bytes,'application/octet-stream');}
-assert((draft.required||[]).every(d=>d===sha),'Outro arquivo precisaria mudar');
-await api('/deploys/'+draft.id+'/files/index.html','PUT',html,'application/octet-stream');
-let ready;
-for(let attempt=1;attempt<=60;attempt++){
- ready=await api('/deploys/'+draft.id);if(ready.state==='ready')break;assert.notEqual(ready.state,'error','Netlify recusou a versão de teste');await new Promise(r=>setTimeout(r,2000));
+
+async function createDeploy(draftMode,manifest){
+ const deploy=await api('/sites/'+siteId+'/deploys','POST',{draft:draftMode,files:manifest,functions,functions_config:configs,function_schedules:schedules,...(draftMode?{branch:'codex/tela-inicial-atendimento'}:{})});
+ console.log('DEPLOY_CREATED '+JSON.stringify({id:deploy.id,draft:draftMode,requiredFiles:deploy.required,requiredFunctionCount:deploy.required_functions?.length||0}));
+ for(const digest of deploy.required_functions||[]){
+  const upload=uploads.get(digest);assert(upload,'Pacote desconhecido');
+  await api('/deploys/'+deploy.id+'/functions/'+upload.name+'?runtime='+encodeURIComponent(upload.runtime)+(upload.invocationMode?'&invocation_mode='+encodeURIComponent(upload.invocationMode):''),'PUT',upload.bytes,'application/octet-stream');
+ }
+ assert((deploy.required||[]).every(d=>d===sha),'Arquivo desconhecido precisaria mudar');
+ if(deploy.required?.includes(sha))await api('/deploys/'+deploy.id+'/files/index.html','PUT',html,'application/octet-stream');
+ for(let attempt=0;attempt<60;attempt++){
+  const current=await api('/deploys/'+deploy.id);if(current.state==='ready')return current;assert.notEqual(current.state,'error','Netlify recusou a publicação');await new Promise(r=>setTimeout(r,2000));
+ }throw Error('Netlify ainda não confirmou o deploy');
 }
-assert.equal(ready.state,'ready');
 const behavior=f=>({name:f.n,runtime:f.r,region:f.rg,build:f.bd,display:f.dn,generator:f.g,memory:f.m});
 const sorted=arr=>arr.filter(f=>!newNames.includes(f.n)).map(behavior).sort((a,b)=>a.name.localeCompare(b.name));
-assert.deepEqual(sorted(ready.available_functions),sorted(oldFunctions),'Características das funções mudaram; não publicar');
-const draftUrl='https://'+draft.id+'--atendimento-idy.netlify.app/';
-const draftHtml=await (await fetch(draftUrl+'?check='+Date.now())).text();assert.deepEqual(scripts(draftHtml),scripts(html));assert(draftHtml.includes('id="startScreen"')&&draftHtml.includes('id="clientEmail"'));
-assert.equal((await fetch(draftUrl+'.netlify/functions/health')).status,healthStatus,'Health mudou na versão de teste');
-assert.equal(ready.available_functions.length,10);assert(schedules.some(f=>f.name==='idle-leads'&&f.cron==='* * * * *'));
-const noTicket=await fetch(draftUrl+'.netlify/functions/artwork');assert([403,503].includes(noTicket.status),'Função de arte não ficou disponível');
-const noOrigin=await fetch(draftUrl+'.netlify/functions/partial-lead',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});assert.equal(noOrigin.status,403,'Salvamento de conversa não disponível');
-
-console.log('REAL_IMAGE_TEST_STARTED');
-const envEntries=await api('/accounts/'+site.account_id+'/env?site_id='+siteId);
-const openAIEntry=envEntries.find(e=>e.key==='OPENAI_API_KEY');
-const prodValue=openAIEntry?.values?.find(v=>v.context==='production')||openAIEntry?.values?.find(v=>v.context==='all');
-assert(prodValue?.value,'Credencial da IA para o teste real não está acessível na configuração de produção');
-const {createArtworkHandler}=await import('./lib/artwork.mjs');
-const {MemoryStore}=await import('./test-store.mjs');
-const testStore=new MemoryStore();
-const realHandler=createArtworkHandler({env:{OPENAI_API_KEY:prodValue.value},storeFactory:async()=>testStore});
-const handlerFetch=(url,options={})=>realHandler(new Request(url,options),{ip:'127.0.0.1'});
+function checkFunctions(deploy){
+ assert.equal(deploy.available_functions.length,10);
+ assert.deepEqual(sorted(deploy.available_functions),sorted(oldFunctions),'Características das funções existentes mudaram');
+ assert((deploy.function_schedules||[]).some(f=>f.name==='idle-leads'&&f.cron==='* * * * *'),'Agendamento não confirmado');
+}
+async function waitPublished(id,expectedHtml){
+ for(let attempt=0;attempt<40;attempt++){
+  const site=await api('/sites/'+siteId),response=await fetch(base+'?published='+Date.now()),body=await response.text();
+  if(site.published_deploy.id===id&&response.ok&&JSON.stringify(scripts(body))===JSON.stringify(scripts(expectedHtml)))return;
+  await new Promise(r=>setTimeout(r,2000));
+ }throw Error('Publicação ainda não confirmada no endereço público');
+}
 async function imageTest(mode,image){
- const response=await handlerFetch(draftUrl+'.netlify/functions/artwork',{method:'POST',headers:{Origin:new URL(draftUrl).origin,'Content-Type':'application/json'},body:JSON.stringify({mode,brief:mode==='create'?'Crie uma arte conceitual de cartão de visita horizontal para uma empresa fictícia chamada EXEMPLO, com fundo verde e branco, sem telefone nem e-mail. Apenas uma proposta para teste.':'Melhore esta arte de cartão de visita: preserve EXEMPLO e acrescente um detalhe discreto verde, sem novos textos ou contatos.',image}),signal:AbortSignal.timeout(35000)});
+ const response=await fetch(base+'.netlify/functions/artwork',{method:'POST',headers:{Origin:new URL(base).origin,'Content-Type':'application/json'},body:JSON.stringify({mode,brief:mode==='create'?'Crie uma arte conceitual de cartão de visita horizontal para uma empresa fictícia chamada EXEMPLO, com fundo verde e branco, sem telefone nem e-mail. Apenas uma proposta para teste.':'Melhore esta arte de cartão: preserve EXEMPLO e acrescente um detalhe discreto verde, sem novos textos ou contatos.',image}),signal:AbortSignal.timeout(35000)});
  const data=await response.json().catch(()=>({}));assert(response.ok&&data.ok&&data.ticket,'Criação real '+mode+' falhou HTTP '+response.status+' '+String(data.error||'Resposta inválida').slice(0,200));
  let result;
  for(let attempt=0;attempt<80;attempt++){
-  await new Promise(r=>setTimeout(r,2500));const poll=await handlerFetch(draftUrl+'.netlify/functions/artwork',{headers:{Authorization:'Bearer '+data.ticket},signal:AbortSignal.timeout(30000)}),value=await poll.json().catch(()=>({}));
+  await new Promise(r=>setTimeout(r,2500));const poll=await fetch(base+'.netlify/functions/artwork',{headers:{Authorization:'Bearer '+data.ticket},signal:AbortSignal.timeout(30000)}),value=await poll.json().catch(()=>({}));
   assert(poll.ok&&value.ok,'Consulta de arte '+mode+' falhou HTTP '+poll.status+' '+String(value.error||'').slice(0,200));
   if(value.status==='completed'){result=value.image;break;}
  }
  assert(typeof result==='string'&&/^data:image\/(jpeg|png);base64,/.test(result),'Arte real não retornou uma imagem');
- const imageBytes=Buffer.from(result.split(',')[1],'base64');assert(imageBytes.length>1000,'Imagem gerada incompleta');
- await handlerFetch(draftUrl+'.netlify/functions/artwork',{method:'DELETE',headers:{Authorization:'Bearer '+data.ticket}});
- console.log('DRAFT_REAL_IMAGE_VERIFIED '+JSON.stringify({mode,bytes:imageBytes.length}));return result;
+ const bytes=Buffer.from(result.split(',')[1],'base64');assert(bytes.length>1000,'Imagem gerada incompleta');
+ await fetch(base+'.netlify/functions/artwork',{method:'DELETE',headers:{Authorization:'Bearer '+data.ticket}});
+ console.log('REAL_IMAGE_VERIFIED '+JSON.stringify({mode,bytes:bytes.length}));return result;
 }
-const generated=await imageTest('create');await imageTest('edit',generated);
-report.realImageCreationAndEditingVerified=true;
-report.idleCron='* * * * *';report.idleThresholdMinutes=10;
+const draft=await createDeploy(true,files);checkFunctions(draft);
+report.draftDeploy=draft.id;fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
+const draftUrl='https://'+draft.id+'--atendimento-idy.netlify.app/';
+const draftHtml=await (await fetch(draftUrl+'?check='+Date.now())).text();assert.deepEqual(scripts(draftHtml),scripts(html));
+const nativeResponse=await fetch(draftUrl+'.netlify/functions/artwork');assert([403,503].includes(nativeResponse.status),'Função nativa não abriu na prévia');
 const latest=await api('/sites/'+siteId);assert.equal(latest.published_deploy.id,expectedPrevious,'Outra publicação ocorreu; não sobrescrever');
-console.log('DRAFT_READY_PRESERVING_FUNCTIONS '+JSON.stringify({id:draft.id,count:oldFunctions.length}));
-const production=await api('/sites/'+siteId+'/deploys','POST',{draft:false,files,functions,functions_config:configs,function_schedules:schedules});
-for(const digest of production.required_functions||[]){const upload=uploads.get(digest);assert(upload);await api('/deploys/'+production.id+'/functions/'+upload.name+'?runtime='+encodeURIComponent(upload.runtime)+(upload.invocationMode?'&invocation_mode='+encodeURIComponent(upload.invocationMode):''),'PUT',upload.bytes,'application/octet-stream');}
-assert((production.required||[]).length===0,'A produção deve usar somente os arquivos já verificados');
-let published=false;
-for(let attempt=1;attempt<=30;attempt++){
- const current=await api('/sites/'+siteId);const response=await fetch(base+'?published='+Date.now()),body=await response.text();
- if(current.published_deploy.id===production.id&&response.ok&&JSON.stringify(scripts(body))===JSON.stringify(scripts(html))){published=true;break}
- await new Promise(r=>setTimeout(r,2000));
-}
-assert(published,'Publicação ainda não confirmada no endereço público');
-assert.equal((await fetch(base+'.netlify/functions/health')).status,healthStatus);
-const finalDeploy=await api('/deploys/'+production.id);assert.deepEqual(sorted(finalDeploy.available_functions),sorted(oldFunctions));
-const finalHealth=await (await fetch(base+'.netlify/functions/health')).json().catch(()=>({}));assert.equal(finalHealth.hasKey,previousHealth.hasKey,'Configuração da IA mudou');
-assert.equal(finalDeploy.available_functions.length,10);assert((finalDeploy.function_schedules||[]).some(f=>f.name==='idle-leads'&&f.cron==='* * * * *'),'Agendamento não confirmado');
-
+// Validate protected production credentials behind the existing page before exposing the new controls.
+const existingIndex=oldFiles.find(f=>f.path.toLowerCase()==='/index.html').sha;
+const backendFiles={...files,'index.html':existingIndex};
+let backend;
 try{
- const liveArtwork=await fetch(base+'.netlify/functions/artwork');assert.equal(liveArtwork.status,403,'Configuração da criação não ficou disponível em produção');
+ backend=await createDeploy(false,backendFiles);report.backendDeploy=backend.id;
+ await waitPublished(backend.id,original);checkFunctions(backend);
+ console.log('BACKEND_READY_EXISTING_PAGE_PRESERVED '+JSON.stringify({id:backend.id}));
+ const keyCheck=await (await fetch(base+'.netlify/functions/health')).json();assert.equal(keyCheck.hasKey,previousHealth.hasKey,'Configuração da IA mudou');
+ const liveArtwork=await fetch(base+'.netlify/functions/artwork');assert.equal(liveArtwork.status,403,'Criação não ficou configurada em produção');
+ const generated=await imageTest('create');await imageTest('edit',generated);report.realImageCreationAndEditingVerified=true;
  const startResponse=await fetch(base+'.netlify/functions/partial-lead',{method:'POST',headers:{Origin:new URL(base).origin,'Content-Type':'application/json'},body:JSON.stringify({action:'start',startId:crypto.randomUUID(),contact:{nome:'Teste técnico sem envio',email:'teste@example.invalid',whatsapp:'(51) 99999-0000'}})});
  const startData=await startResponse.json().catch(()=>({}));assert(startResponse.ok&&startData.ticket,'Salvamento em Blobs falhou HTTP '+startResponse.status);
- const finishResponse=await fetch(base+'.netlify/functions/partial-lead',{method:'POST',headers:{Origin:new URL(base).origin,'Content-Type':'application/json',Authorization:'Bearer '+startData.ticket},body:JSON.stringify({action:'complete'})});assert(finishResponse.ok,'Teste técnico não pôde ser concluído');
+ let finished=false;
+ for(let attempt=0;attempt<3;attempt++){
+  const r=await fetch(base+'.netlify/functions/partial-lead',{method:'POST',headers:{Origin:new URL(base).origin,'Content-Type':'application/json',Authorization:'Bearer '+startData.ticket},body:JSON.stringify({action:'complete'})});
+  if(r.ok){finished=true;break;}
+ }assert(finished,'Teste técnico não pôde ser concluído para evitar aviso');
  report.productionRuntimeAndPartialStorageVerified=true;
+ const current=await api('/sites/'+siteId);assert.equal(current.published_deploy.id,backend.id,'Outra publicação ocorreu durante os testes; não sobrescrever');
+ const production=await createDeploy(false,files);await waitPublished(production.id,html);checkFunctions(production);
+ assert.equal((await fetch(base+'.netlify/functions/health')).status,healthStatus);
+ const finalHealth=await (await fetch(base+'.netlify/functions/health')).json();assert.equal(finalHealth.hasKey,previousHealth.hasKey);
+ report.state='published';report.publishedDeploy=production.id;report.publicUrl=base;report.existingFunctionSourceCodeUnchanged=true;report.functionsRepackaged=true;report.idleCron='* * * * *';report.idleThresholdMinutes=10;
+ fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
+ console.log('PAGE_PUBLICATION_CONFIRMED '+JSON.stringify(report));
 }catch(error){
- await api('/sites/'+siteId+'/deploys/'+expectedPrevious+'/restore','POST');
- report.state='rolled-back';report.publicationError=String(error.message).slice(0,200);fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));throw error;
+ if(backend){
+  const current=await api('/sites/'+siteId);
+  if(current.published_deploy.id===backend.id){
+   await api('/sites/'+siteId+'/deploys/'+expectedPrevious+'/restore','POST');await waitPublished(expectedPrevious,original);report.state='rolled-back';
+  }else report.state='external-publication-detected';
+ }else report.state='failed-before-production';
+ report.publicationError=String(error.message).slice(0,250);fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));console.log('PUBLICATION_STOPPED '+JSON.stringify(report));throw error;
 }
-report.state='published';report.publishedDeploy=production.id;report.publicUrl=base;report.existingFunctionSourceCodeUnchanged=true;report.functionsRepackaged=true;fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));
-console.log('PAGE_PUBLICATION_CONFIRMED '+JSON.stringify(report));
-
