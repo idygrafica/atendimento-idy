@@ -43,7 +43,6 @@ jobs:
            configs[fn.n]={build_data:fn.bd||{}};
            if(fn.dn)configs[fn.n].display_name=fn.dn;
            if(fn.g)configs[fn.n].generator=fn.g;
-           if(fn.m)configs[fn.n].memory=fn.m;
            if(fn.c&&typeof fn.c==='object')Object.assign(configs[fn.n],fn.c);
           }
           const live=await (await fetch(base+'?before='+Date.now())).text();
