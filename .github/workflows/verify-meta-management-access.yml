@@ -1,0 +1,49 @@
+name: Verify Meta management access without publishing
+on:
+  push:
+    branches: [codex/configura-whatsapp-previa]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check available management credentials and site configuration safely
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
+          WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ vars.WHATSAPP_PHONE_NUMBER_ID || secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_BUSINESS_ACCOUNT_ID: ${{ vars.WHATSAPP_BUSINESS_ACCOUNT_ID || secrets.WHATSAPP_BUSINESS_ACCOUNT_ID }}
+          WHATSAPP_WABA_ID: ${{ vars.WHATSAPP_WABA_ID || secrets.WHATSAPP_WABA_ID }}
+          META_APP_ID: ${{ vars.META_APP_ID || secrets.META_APP_ID }}
+          WHATSAPP_APP_ID: ${{ vars.WHATSAPP_APP_ID || secrets.WHATSAPP_APP_ID }}
+          META_BUSINESS_ID: ${{ vars.META_BUSINESS_ID || secrets.META_BUSINESS_ID }}
+          META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION }}
+        run: |
+          node --input-type=module <<'JS'
+          const env=process.env;
+          async function api(path){const r=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+env.NETLIFY_AUTH_TOKEN},signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('NETLIFY_HTTP_'+r.status);return r.json();}
+          const site=await api('/sites/'+env.NETLIFY_SITE_ID);
+          if(site.name!=='atendimento-idy')throw Error('WRONG_SITE');
+          const entries=await api('/accounts/'+site.account_id+'/env?site_id='+env.NETLIFY_SITE_ID);
+          const keys=['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_BUSINESS_ACCOUNT_ID','WHATSAPP_WABA_ID','META_APP_ID','WHATSAPP_APP_ID','META_BUSINESS_ID','META_GRAPH_VERSION','WHATSAPP_ARTWORK_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_LANGUAGE'];
+          const available={},production={};
+          for(const key of keys){
+            available[key]=!!env[key];
+            const entry=entries.find(e=>e.key===key),value=entry?.values?.find(v=>v.context==='production')||entry?.values?.find(v=>v.context==='all');
+            production[key]={configured:!!value,protected:!!entry?.is_secret};
+          }
+          console.log('CONFIGURATION_ACCESS_REPORT '+JSON.stringify({site:'atendimento-idy',publishedDeploy:site.published_deploy.id,githubCredentialsAvailable:available,netlifyProduction:production}));
+          if(env.WHATSAPP_ACCESS_TOKEN){
+            const r=await fetch('https://graph.facebook.com/'+(env.META_GRAPH_VERSION||'v26.0')+'/me/permissions',{headers:{Authorization:'Bearer '+env.WHATSAPP_ACCESS_TOKEN},signal:AbortSignal.timeout(12000)});
+            let body;try{body=await r.json()}catch{body={};}
+            const permitted=(body.data||[]).filter(p=>p.status==='granted').map(p=>p.permission).filter(p=>['whatsapp_business_management','whatsapp_business_messaging','business_management'].includes(p));
+            console.log('META_MANAGEMENT_PERMISSION_REPORT '+JSON.stringify({httpStatus:r.status,permissions:permitted,errorCode:body.error?.code||null}));
+          }else console.log('META_ACCESS_BLOCKED_NO_CREDENTIAL_AVAILABLE_OUTSIDE_PRODUCTION_RUNTIME');
+          console.log('NO_CONFIG_WRITES_NO_DEPLOYS_NO_MESSAGES_NO_SECRET_VALUES');
+          JS
