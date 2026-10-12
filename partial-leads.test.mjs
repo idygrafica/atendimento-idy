@@ -45,3 +45,7 @@ test('execuções concorrentes e resposta incerta não duplicam aviso',async()=>
 test('repetir o início após falha de rede mantém o mesmo atendimento e aviso único',async()=>{
   const f=await fixture();const r=await f.handler(request({action:'start',contact}),{ip:'127.0.0.1'});assert.equal(r.status,200);assert.equal((await r.json()).ticket,f.ticket);assert.equal([...f.store.values.keys()].filter(k=>k.startsWith('drafts/')).length,1);
 });
+test('retomar o atendimento exige o ticket e retorna somente histórico e estado público da prévia',async()=>{
+  const f=await fixture(),key='drafts/'+f.ticket.split('.')[0],record=(await f.store.getWithMetadata(key)).data;record.artwork={state:'completed',responseId:'private-response',id:'private-claim'};await f.store.setJSON(key,record);
+  const response=await f.update({action:'restore'}),data=await response.json();assert.equal(response.status,200);assert.equal(data.previewUsed,true);assert.equal(data.history[0].content,'Preciso de 500 cartões.');assert(!JSON.stringify(data).includes('private-response'));assert.equal((await f.handler(request({action:'restore'},f.ticket+'a'))).status,403);
+});

@@ -13,14 +13,14 @@ class Element {
   async trigger(name,event={}){return this.events.get(name)?.(event)}
   focus(){}click(){return this.trigger('click')}showModal(){this.open=true}close(){this.open=false}
 }
-async function page(fetchImpl=async()=>Response.json({answer:'Resposta de teste'}),{mockPartial=true}={}){
+async function page(fetchImpl=async()=>Response.json({answer:'Resposta de teste'}),{mockPartial=true,sessionStorage}={}){
   const html=await readFile(new URL('index.html',import.meta.url),'utf8'),elements=new Map();
   for(const match of html.matchAll(/<[^>]+id="([^"]+)"[^>]*>/g)){
     const el=new Element();el.hidden=/\bhidden\b/.test(match[0]);el.disabled=/\bdisabled\b/.test(match[0]);elements.set(match[1],el);
   }
   const get=id=>{assert(elements.has(id),'Elemento '+id);return elements.get(id)};
   const wrappedFetch=(url,options)=>mockPartial&&url==='/.netlify/functions/partial-lead'?Promise.resolve(Response.json({ok:true,ticket:'mock-ticket'})):fetchImpl(url,options);
-  const context=vm.createContext({document:{getElementById:get,createElement:()=>new Element()},fetch:wrappedFetch,FormData,File,Uint8Array,atob,AbortSignal,URL,crypto:webcrypto,console,encodeURIComponent,setTimeout:fn=>fn(),alert:message=>{throw Error(message)}});
+  const context=vm.createContext({document:{getElementById:get,createElement:()=>new Element()},fetch:wrappedFetch,FormData,File,Uint8Array,atob,AbortSignal,URL,crypto:webcrypto,console,encodeURIComponent,sessionStorage,setTimeout:fn=>fn(),alert:message=>{throw Error(message)}});
   vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
   return {get,html,context,flush:()=>vm.runInContext('partialSaving',context),async start(){get('clientName').value='Cliente de teste';get('clientEmail').value='cliente@example.invalid';get('clientPhone').value='(51) 99999-0000';await get('startForm').trigger('submit',{preventDefault(){}});await vm.runInContext('partialSaving',context)}};
 }
@@ -130,4 +130,36 @@ test('salvamento parcial inclui contatos e conversa, sem upload nem aviso direto
 });
 test('falha de salvamento automático é visível e não bloqueia a IA',async()=>{
   const p=await page(async url=>url==='/.netlify/functions/partial-lead'?new Response('Falhou',{status:503}):Response.json({answer:'Resposta'}) ,{mockPartial:false});await p.start();assert.match(p.get('saveStatus').textContent,/não confirmado/);await say(p,'Quero cartões');assert.equal(p.get('status').textContent,'Pronto.');
+});
+
+test('pedido de segunda geração oferece humano e não chama novamente a API nem remove a primeira prévia',async()=>{
+  let generations=0;const p=await page(async(url,options={})=>{
+    if(url==='/.netlify/functions/artwork'){if(options.method==='POST')generations++;return Response.json(options.method==='POST'?{ok:true,ticket:'test-ticket'}:options.method==='DELETE'?{ok:true}:{ok:true,status:'completed',image:sampleImage,notification:{state:'accepted'}});}
+    return Response.json({ok:true});
+  });await p.start();await say(p,'Crie uma arte moderna para meu cartão.');assert.equal(generations,1);assert.equal(p.get('createArtwork').disabled,true);assert.match(p.get('artworkNotice').textContent,/encaminhada/);
+  await say(p,'Crie uma nova arte com outras cores.');assert.equal(generations,1);assert.match(p.get('chat').children.at(-1).children[0].textContent,/já foi utilizada/);assert.match(p.get('chat').children.at(-1).children[1].href,/wa.me\/5551981687562/);assert.equal(p.get('send').disabled,false);
+  await attach(p);await say(p,'Crie uma nova arte com este outro arquivo.');assert.equal(generations,1);
+});
+test('bloqueio do servidor também mostra humano quando o navegador ainda não sabe que a prévia foi utilizada',async()=>{
+  const p=await page(async()=>Response.json({ok:false,errorCode:'ARTWORK_ALREADY_USED'},{status:409}));await p.start();await say(p,'Crie uma arte para meu cartão.');assert.match(p.get('chat').children.at(-1).children[0].textContent,/já foi utilizada/);assert.equal(p.get('send').disabled,false);assert.equal(p.get('createArtwork').disabled,true);
+});
+test('botão humano aparece acima do compositor, aponta para o responsável e não troca o botão Enviar',async()=>{
+  const p=await page();const tag=p.html.match(/<a id="humanContact"[^>]+>/)[0],href=tag.match(/href="([^"]+)"/)[1],url=new URL(href);
+  assert.equal(url.hostname,'wa.me');assert.equal(url.pathname,'/5551981687562');assert.equal(url.searchParams.get('text'),'Olá! Vim pelo Atendimento com IA da IDY Gráfica e gostaria de falar com um atendente.');assert.match(tag,/target="_blank"/);assert.match(tag,/rel="noopener noreferrer"/);assert(p.html.indexOf('id="humanContact"')<p.html.indexOf('<div class="composer">'));assert(p.html.includes('Falar com atendimento humano'));assert(p.html.includes('id="send"'));
+});
+test('prévia continua disponível quando o aviso WhatsApp depende de configuração',async()=>{
+  const p=await page(async(url,options={})=>Response.json(options.method==='POST'?{ok:true,ticket:'test-ticket'}:options.method==='DELETE'?{ok:true}:{ok:true,status:'completed',image:sampleImage,notification:{state:'configuration_required'}}));await p.start();await say(p,'Crie uma arte moderna para meu cartão.');assert.match(p.get('status').textContent,/Prévia pronta/);assert.match(p.get('artworkNotice').textContent,/pendente/);assert.equal(p.get('send').disabled,false);
+});
+test('recarregar a página retoma o mesmo atendimento e não libera uma segunda prévia',async()=>{
+  const values=new Map(),sessionStorage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value)};let generations=0,starts=0;
+  const fetcher=async(url,options={})=>{
+    if(url==='/.netlify/functions/partial-lead'){
+      const body=JSON.parse(options.body);if(body.action==='start')starts++;
+      return Response.json(body.action==='restore'?{ok:true,previewUsed:true,sequence:10,history:[{role:'user',content:'Quero 500 cartões.'}]}:{ok:true,ticket:'saved-ticket'});
+    }
+    if(url==='/.netlify/functions/artwork'){if(options.method==='POST')generations++;return Response.json(options.method==='POST'?{ok:true,ticket:'test-ticket'}:options.method==='DELETE'?{ok:true}:{ok:true,status:'completed',image:sampleImage,notification:{state:'accepted'}});}
+    return Response.json({ok:true,answer:'Vamos continuar.'});
+  };
+  const a=await page(fetcher,{mockPartial:false,sessionStorage});await a.start();await say(a,'Crie uma arte para os meus cartões.');await a.flush();
+  const b=await page(fetcher,{mockPartial:false,sessionStorage});await b.start();await say(b,'Crie outra arte para meu cartão.');assert.equal(starts,1);assert.equal(generations,1);assert.match(b.get('chat').children.at(-1).children[0].textContent,/já foi utilizada/);assert.equal(b.get('send').disabled,false);
 });

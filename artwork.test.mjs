@@ -1,13 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createArtworkHandler} from './lib/artwork.mjs';
-import {MemoryStore} from './test-store.mjs';
+import {MemoryStore,testAttendance} from './test-store.mjs';
 
 const png=Buffer.from([137,80,78,71,13,10,26,10,0,1,2]).toString('base64'),image='data:image/png;base64,'+png;
 const env={OPENAI_API_KEY:'mock-key-never-a-real-secret'};
 const req=(method,body,ticket,origin='https://example.invalid')=>new Request('https://example.invalid/.netlify/functions/artwork',{method,headers:{origin,'Content-Type':'application/json',...(ticket?{Authorization:'Bearer '+ticket}:{})},...(body?{body:JSON.stringify(body)}:{})});
 const fixture=(fetchImpl=async()=>Response.json({id:'resp_example',status:'queued'}),overrides={})=>{
-  const store=new MemoryStore();return {store,handler:createArtworkHandler({env,storeFactory:async()=>store,fetchImpl,...overrides})};
+  const store=new MemoryStore(),attendance=new MemoryStore(),notifications=new MemoryStore(),effectiveEnv=overrides.env||env,now=overrides.now||Date.now;
+  const realHandler=createArtworkHandler({env,storeFactory:async()=>store,attendanceStoreFactory:async()=>attendance,notificationStoreFactory:async()=>notifications,fetchImpl,...overrides});
+  const handler=async(req,context)=>{
+    if(req.method==='POST'){
+      const body=await req.clone().json();body.attendanceTicket=await testAttendance(attendance,effectiveEnv.OPENAI_API_KEY||env.OPENAI_API_KEY,{now:now()});
+      req=new Request(req,{body:JSON.stringify(body)});
+    }return realHandler(req,context);
+  };return {store,handler};
 };
 const start=async handler=>{const r=await handler(req('POST',{mode:'create',brief:'Crie um cartão de exemplo.'}),{ip:'127.0.0.1'});assert.equal(r.status,202);return (await r.json()).ticket;};
 test('bloqueia origem externa, entrada inválida e pedidos sem configuração antes de cobrar',async()=>{

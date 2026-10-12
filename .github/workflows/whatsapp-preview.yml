@@ -1,32 +1,47 @@
-name: Audit WhatsApp configuration without publishing
+name: Validate one preview, WhatsApp notifications and human contact
 on:
   push:
     branches: [codex/previa-unica-whatsapp]
 permissions:
   contents: read
 jobs:
-  audit:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Read configuration metadata without exposing credentials
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
+      - name: Test quota, attendance, image notifications and existing chat flows
+        run: node --test --test-isolation=none artwork.test.mjs artwork-quota.test.mjs artwork-attendance.test.mjs artwork-notification.test.mjs flow.test.mjs partial-leads.test.mjs
+      - name: Verify daily reset independently of the server timezone
+        run: TZ=Pacific/Honolulu node --test --test-isolation=none artwork-quota.test.mjs
+      - name: Install browser and packaging tools without credentials
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts playwright @netlify/blobs@11.1.4
+          npx playwright install --with-deps chromium
+          mkdir -p .quota-tooling
+          node -e "require('fs').writeFileSync('.quota-tooling/package.json',JSON.stringify({private:true,dependencies:{'@netlify/zip-it-and-ship-it':'16.3.0'},overrides:{'@netlify/serverless-functions-api':'2.18.0'}}))"
+          npm install --prefix .quota-tooling --no-package-lock --ignore-scripts --no-audit --no-fund
+      - name: Verify human button, popup, image and one-preview rule in five screen widths
+        run: node human-preview.browser.mjs
+      - name: Verify native runtime bundle contains quota, attendance and WhatsApp notification
         run: |
           node --input-type=module <<'JS'
-          const token=process.env.NETLIFY_AUTH_TOKEN,siteId=process.env.NETLIFY_SITE_ID;
-          async function api(path){const r=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw Error('Leitura Netlify HTTP '+r.status);return r.json()}
-          const site=await api('/sites/'+siteId);if(site.name!=='atendimento-idy')throw Error('Projeto incorreto');
-          const entries=await api('/accounts/'+site.account_id+'/env?site_id='+siteId),settings={};
-          for(const key of ['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','META_GRAPH_VERSION','WHATSAPP_LEAD_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_LANGUAGE','WHATSAPP_BUSINESS_ACCOUNT_ID','WHATSAPP_WABA_ID']){
-           const entry=entries.find(e=>e.key===key),value=entry?.values?.find(v=>v.context==='production')||entry?.values?.find(v=>v.context==='all');
-           const safe=['META_GRAPH_VERSION','WHATSAPP_LEAD_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_NAME','WHATSAPP_ARTWORK_TEMPLATE_LANGUAGE'].includes(key);
-           settings[key]={configured:!!entry,productionConfigured:!!value,secret:!!entry?.is_secret,functionsScope:entry?.scopes?.includes('functions')??true,...(safe&&!entry?.is_secret?{value:value?.value}:{})};
-          }
-          console.log('WHATSAPP_CONFIGURATION_READ_ONLY '+JSON.stringify({publishedDeploy:site.published_deploy.id,settings}));
-          console.log('NO_META_MESSAGES_SENT_NO_CONFIGURATIONS_CHANGED');
+          import assert from 'node:assert/strict';
+          import {createRequire} from 'node:module';
+          import {execFileSync} from 'node:child_process';
+          const require=createRequire(process.cwd()+'/.quota-tooling/package.json'),{zipFunctions}=require('@netlify/zip-it-and-ship-it');
+          const bundles=await zipFunctions('netlify/functions',process.cwd()+'/.quota-bundles',{config:{'*':{nodeVersion:'24',nodeBundler:'nft'}},archiveFormat:'zip'});
+          const artwork=bundles.find(b=>b.name==='artwork'),worker=bundles.find(b=>b.name==='artwork-notifications');assert(artwork&&worker);
+          assert.equal(artwork.runtimeAPIVersion,2);assert.equal(worker.runtimeAPIVersion,2);assert.equal(artwork.invocationMode,'stream');
+          const code=execFileSync('python3',['-c','import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print("\\n".join(z.read(n).decode("utf-8",errors="ignore") for n in z.namelist() if n.endswith((".js",".mjs",".cjs"))))',artwork.path],{encoding:'utf8'});
+          for(const marker of ['America/Sao_Paulo','PREVIEW_DAILY_LIMIT','ARTWORK_ALREADY_USED','WHATSAPP_ARTWORK_TEMPLATE_NAME','5551981687562'])assert(code.includes(marker),'Código necessário não incluído: '+marker);
+          console.log('HUMAN_PREVIEW_NATIVE_BUNDLE_VERIFIED '+JSON.stringify({runtimeAPIVersion:2,invocationMode:'stream',quota:true,attendance:true,notification:true,worker:true}));
           JS
+      - name: Save preview screenshots for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: human-contact-previews
+          path: preview/atendimento-humano-*.jpg
