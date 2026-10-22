@@ -1,3 +1,5 @@
+import {createRequire} from 'node:module';
+const {handler:chatHandler}=createRequire(import.meta.url)('./netlify/functions/chat.js');
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -62,7 +64,7 @@ const say=async(p,text)=>{p.get('message').value=text;await p.get('send').trigge
 test('o anexo oferece encaminhamento na conversa sem registrar antes da confirmação',async()=>{
   const calls=[];const p=await page(async(url,options)=>{calls.push({url,options});return Response.json({ok:true,answer:'Resposta'})});
   await p.start();await attach(p);assert.equal(calls.length,0);
-  assert.match(p.get('chat').children.at(-1).children[0].textContent,/Precisa de mais alguma coisa/);
+  assert.match(p.get('chat').children.at(-1).children[0].textContent,/pedir atendimento humano/);
   assert(!p.html.includes('id="lead"'));assert(!p.html.includes('id="leadDialog"'));
   await say(p,'Não, pode encaminhar.');assert.deepEqual(calls.map(c=>c.url),['/','/.netlify/functions/notify-idy-whatsapp']);
   await say(p,'Pode encaminhar');assert.equal(calls.length,2);
@@ -72,11 +74,11 @@ test('recusa e perguntas adicionais continuam na IA sem disparar registro',async
     const calls=[];const p=await page(async url=>{calls.push(url);return Response.json({answer:'Vamos continuar'})});await p.start();await attach(p);await say(p,text);assert.deepEqual(calls,['/.netlify/functions/chat'],text);
   }
 });
-test('não sozinho só finaliza após a pergunta de encaminhamento',async()=>{
-  const calls=[];const p=await page(async url=>{calls.push(url);return Response.json({answer:'Resposta',ok:true})});await p.start();await say(p,'Não');assert.deepEqual(calls,['/.netlify/functions/chat']);await attach(p);await say(p,'Não');assert.deepEqual(calls,['/.netlify/functions/chat','/','/.netlify/functions/notify-idy-whatsapp']);
+test('não sozinho não encaminha o atendimento, mesmo após selecionar arquivo',async()=>{
+  const calls=[];const p=await page(async url=>{calls.push(url);return Response.json({answer:'Resposta',ok:true})});await p.start();await say(p,'Não');assert.deepEqual(calls,['/.netlify/functions/chat']);await attach(p);await say(p,'Não');assert.deepEqual(calls,['/.netlify/functions/chat','/.netlify/functions/chat']);
 });
-test('um arquivo selecionado durante a resposta oferece encaminhamento depois dela',async()=>{
-  let release;const wait=new Promise(resolve=>release=resolve);const p=await page(async()=>{await wait;return Response.json({answer:'Resposta'})});await p.start();p.get('message').value='Meu pedido';const pending=p.get('send').trigger('click');await attach(p);assert(!p.get('chat').children.at(-1).children[0]);release();await pending;assert.match(p.get('chat').children.at(-1).children[0].textContent,/Precisa de mais alguma coisa/);
+test('arquivo selecionado durante a resposta não repete pergunta de confirmação',async()=>{
+  let release;const wait=new Promise(resolve=>release=resolve);const p=await page(async()=>{await wait;return Response.json({answer:'Resposta'})});await p.start();p.get('message').value='Meu pedido';const pending=p.get('send').trigger('click');await attach(p);assert(!p.get('chat').children.at(-1).children[0]);release();await pending;assert.equal(p.get('chat').children.at(-1).children[0].textContent,'Resposta');
 });
 test('confirmações simultâneas geram apenas um registro e um aviso',async()=>{
   const calls=[];let release;const wait=new Promise(resolve=>release=resolve);const p=await page(async url=>{calls.push(url);if(url==='/')await wait;return Response.json({ok:true})});await p.start();await attach(p);p.get('message').value='Pode enviar';const pending=p.get('send').trigger('click');await say(p,'Pode enviar');await p.flush();assert.deepEqual(calls,['/']);assert.equal(p.get('attach').disabled,true);release();await pending;assert.deepEqual(calls,['/','/.netlify/functions/notify-idy-whatsapp']);assert.equal(p.get('send').disabled,false);
@@ -131,3 +133,37 @@ test('salvamento parcial inclui contatos e conversa, sem upload nem aviso direto
 test('falha de salvamento automático é visível e não bloqueia a IA',async()=>{
   const p=await page(async url=>url==='/.netlify/functions/partial-lead'?new Response('Falhou',{status:503}):Response.json({answer:'Resposta'}) ,{mockPartial:false});await p.start();assert.match(p.get('saveStatus').textContent,/não confirmado/);await say(p,'Quero cartões');assert.equal(p.get('status').textContent,'Pronto.');
 });
+
+test('dois turnos reais do endpoint dão R$ 9,00 e pedido humano registra todo o histórico com anexo',async()=>{
+  const forms=[],notifications=[];let ai=0;
+  const p=await page(async(url,options)=>{
+    if(url==='/.netlify/functions/chat'){ai++;const r=await chatHandler({httpMethod:'POST',body:options.body});return new Response(r.body,{status:r.statusCode,headers:r.headers});}
+    if(url==='/')forms.push(options.body);
+    if(url==='/.netlify/functions/notify-idy-whatsapp')notifications.push(JSON.parse(options.body));
+    return Response.json({ok:true});
+  });
+  await p.start();await say(p,'Quanto custa uma cópia A3 colorida?');await say(p,'Quero 3, somente frente.');
+  assert.match(p.get('chat').children.at(-1).children[0].textContent,/Total: R\$ 9,00/);
+  await attach(p);await say(p,'Quero falar com um humano.');
+  assert.equal(forms.length,1);assert.equal(notifications.length,1);assert.equal(forms[0].get('arte').name,'arte.pdf');assert.match(forms[0].get('resumo'),/R\$ 9,00/);assert.match(forms[0].get('resumo'),/Quanto custa uma cópia/);assert.match(forms[0].get('resumo'),/Quero falar com um humano/);assert.equal(ai,3);
+  await say(p,'humano');assert.equal(forms.length,1);assert.equal(notifications.length,1);
+});
+test('papel sem tabela solicita a equipe automaticamente, sem frase de confirmação',async()=>{
+  let form;const p=await page(async(url,options)=>{
+    if(url==='/.netlify/functions/chat'){const r=await chatHandler({httpMethod:'POST',body:options.body});return new Response(r.body,{status:r.statusCode,headers:r.headers});}
+    if(url==='/')form=options.body;return Response.json({ok:true});
+  });await p.start();await say(p,'Quanto fica em papel mais grosso?');assert(form);assert.match(form.get('resumo'),/mais grosso/);assert(!form.get('resumo').includes('pode encaminhar'));
+});
+test('botão humano registra histórico e conserva o link de WhatsApp e os dados de contato',async()=>{
+  let form;const p=await page(async(url,options)=>{if(url==='/')form=options.body;return Response.json({ok:true,answer:'Resposta anterior'});});
+  await p.start();await say(p,'Meu pedido de impressão');await p.get('humanContact').trigger('click');assert(form);assert.match(form.get('resumo'),/Meu pedido de impressão/);assert.match(form.get('resumo'),/Resposta anterior/);assert.equal(form.get('nome'),'Cliente de teste');assert.equal(form.get('whatsapp'),'(51) 99999-0000');assert.match(p.get('humanContact').href,/wa.me\/5551981687562/);
+});
+test('cliques humanos durante resposta são enfileirados e não duplicam o registro',async()=>{
+  let release,forms=0;const wait=new Promise(r=>release=r);const p=await page(async(url)=>{if(url==='/.netlify/functions/chat'){await wait;return Response.json({answer:'Resposta concluída'});}if(url==='/')forms++;return Response.json({ok:true});});
+  await p.start();p.get('message').value='Meu pedido';const pending=p.get('send').trigger('click');await p.get('humanContact').trigger('click');await p.get('humanContact').trigger('click');assert.equal(forms,0);release();await pending;assert.equal(forms,1);
+});
+test('falha no registro humano mantém o anexo e admite uma nova solicitação direta',async()=>{
+  let attempts=0,form;const p=await page(async(url,options)=>{if(url==='/.netlify/functions/chat')return Response.json({answer:'Vou solicitar a equipe.',handoff:true});if(url==='/'){form=options.body;if(++attempts===1)return new Response('Falha',{status:503});}return Response.json({ok:true});});
+  await p.start();await attach(p);await say(p,'humano');assert.match(p.get('status').textContent,/Não foi possível confirmar/);await say(p,'Quero falar com alguém');assert.equal(attempts,2);assert.equal(form.get('arte').name,'arte.pdf');
+});
+

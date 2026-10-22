@@ -1,0 +1,12 @@
+{
+  "currency": "BRL",
+  "prices": [
+    {
+      "format": "A3",
+      "color": "color",
+      "paper": "sulfite-comum",
+      "grammage": null,
+      "pricePerFaceCents": 300
+    }
+  ]
+}
