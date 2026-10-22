@@ -1,0 +1,56 @@
+name: Inspeciona atendimento publicado sem deploy
+on:
+  push:
+    branches: [codex/audita-atendimento-precos]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read current application source without mutations
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import {execFileSync} from 'node:child_process';
+          const token=process.env.NETLIFY_AUTH_TOKEN,id=process.env.NETLIFY_SITE_ID;
+          assert(token&&id,'Acesso de leitura Netlify indisponível');
+          async function read(path){const r=await fetch('https://api.netlify.com/api/v1'+path,{method:'GET',headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(30000)});assert(r.ok,'GET Netlify HTTP '+r.status);return r.json();}
+          const site=await read('/sites/'+id);assert.equal(site.name,'atendimento-idy');
+          const deploy=await read('/deploys/'+site.published_deploy.id);
+          const files=await read('/sites/'+id+'/files');
+          fs.mkdirSync('audit-source',{recursive:true});
+          fs.writeFileSync('audit-source/production.json',JSON.stringify({site:site.name,deploy:deploy.id,state:deploy.state,functions:(deploy.available_functions||[]).map(f=>({name:f.n,digest:f.d})),files:files.map(f=>({path:f.path,sha:f.sha}))},null,2));
+          const download=await read('/deploys/'+deploy.id+'/download');
+          const zip=await fetch(download.url,{signal:AbortSignal.timeout(30000)});assert(zip.ok);fs.writeFileSync('/tmp/idy-current.zip',Buffer.from(await zip.arrayBuffer()));
+          const response=await fetch('https://atendimento-idy.netlify.app/',{signal:AbortSignal.timeout(30000)});assert(response.ok);fs.writeFileSync('audit-source/public-index.html',await response.text());
+          execFileSync('python3',['-c',`import zipfile,pathlib,json
+          z=zipfile.ZipFile('/tmp/idy-current.zip')
+          allowed={'index.html','painel.html','package.json','netlify.toml','lib/services.cjs','lib/http.cjs','lib/prompts.json','lib/conversation-store.mjs','netlify/functions/chat.js','netlify/functions/chat.mjs','netlify/functions/panel-api.mjs','netlify/functions/notify-idy-whatsapp.js','netlify/functions/whatsapp-webhook.mjs'}
+          found=[]
+          for n in z.namelist():
+              key=n.lower().strip('/')
+              if key in allowed:
+                  p=pathlib.Path('audit-source')/key
+                  p.parent.mkdir(parents=True,exist_ok=True)
+                  p.write_bytes(z.read(n))
+                  found.append(key)
+          pathlib.Path('audit-source/found.json').write_text(json.dumps(found))
+          `],{stdio:'inherit'});
+          console.log(JSON.stringify({site:site.name,deploy:deploy.id,state:deploy.state,functions:deploy.available_functions?.length}));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atendimento-codigo-atual
+          path: audit-source/
+          retention-days: 7
