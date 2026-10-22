@@ -1,35 +1,26 @@
-name: Confere fontes públicas do atendimento sem deploy
+name: Diagnostica autenticação Netlify sem publicação
 on:
   push:
     branches: [codex/audita-atendimento-precos]
 permissions:
   contents: read
 jobs:
-  inspect:
+  diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-      - name: Read public source and compare known interface versions
-        run: |
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          import {createHash} from 'node:crypto';
-          const base='https://atendimento-idy.netlify.app/',out='audit-source';fs.mkdirSync(out,{recursive:true});
-          const paths=['index.html','painel.html','lib/services.cjs','lib/http.cjs','lib/prompts.json','lib/conversation-store.mjs','netlify/functions/chat.js','netlify/functions/chat.mjs','netlify/functions/panel-api.mjs','netlify/functions/notify-idy-whatsapp.js','netlify/functions/whatsapp-webhook.mjs','package.json','netlify.toml'];
-          const files=[];
-          for(const p of paths){const r=await fetch(base+(p==='index.html'?'':p),{signal:AbortSignal.timeout(15000)}),b=Buffer.from(await r.arrayBuffer());const html=/^\s*(?:<!doctype|<html)/i.test(b.toString('utf8'));files.push({path:p,status:r.status,sha256:createHash('sha256').update(b).digest('hex'),html});if(r.ok&&(p.endsWith('.html')||!html)){fs.mkdirSync(out+'/'+p.split('/').slice(0,-1).join('/'),{recursive:true});fs.writeFileSync(out+'/'+p,b);}}
-          const scripts=s=>s.split('<script>').slice(1).map(x=>x.split('</script>')[0].trim()).join('\n');
-          const live=fs.readFileSync(out+'/index.html','utf8'),matches=[];
-          for(const ref of ['e6dfd57d844d74d3d9f2bd734dd1f4ad750c174c','e59810a0609fb4435d55460970faf7f1d5f14dae','4780a37006d95638036464faa3bb49d57afe710c']){const r=await fetch('https://raw.githubusercontent.com/idygrafica/atendimento-idy/'+ref+'/index.html');matches.push({ref,scriptMatches:r.ok&&scripts(await r.text())===scripts(live)});}
-          fs.writeFileSync(out+'/production.json',JSON.stringify({files,matches,netlifyApiRead:'401 - no configuration or deployment changed'},null,2));console.log(JSON.stringify({matches,sourceAvailable:files.filter(f=>f.status===200&&!f.html).map(f=>f.path)}));
-          JS
+          node-version: 24
+      - name: Leituras autenticadas sem expor credenciais
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
+        run: node .github/scripts/diagnose-netlify-auth.mjs
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: atendimento-codigo-atual
-          path: audit-source/
-          retention-days: 7
+          name: diagnostico-netlify-sem-publicacao
+          path: diagnostico-netlify/report.json
