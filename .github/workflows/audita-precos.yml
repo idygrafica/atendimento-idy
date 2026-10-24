@@ -1,13 +1,13 @@
-name: Audita backend publicado sem alterações
+name: Confere publicação autorizada do atendimento
 on:
   push:
     branches: [codex/audita-atendimento-precos]
 permissions:
   contents: read
 jobs:
-  public-source:
+  verify-publication:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@v4
         with:
@@ -15,28 +15,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node .github/scripts/audit-public-backend.mjs
+      - name: Conferir somente fontes públicas, preços e proteções sem registrar clientes
+        run: node .github/scripts/verify-atendimento-publication.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backend-publico-sem-publicacao
-          path: preview/production-audit/
-  auth:
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - name: Leitura de autenticação sem alterar credenciais
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
-        run: node .github/scripts/diagnose-netlify-auth.mjs
-      - uses: actions/upload-artifact@v4
-        with:
-          name: autenticacao-sem-publicacao
-          path: diagnostico-netlify/report.json
+          name: atendimento-publicacao-verificada
+          path: publication-check/report.json
