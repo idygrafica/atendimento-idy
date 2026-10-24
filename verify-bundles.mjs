@@ -1,0 +1,30 @@
+import {createRequire} from 'node:module';
+import {execFileSync} from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const require=createRequire(process.cwd()+'/.quote-tooling/package.json');
+const {zipFunctions}=require('@netlify/zip-it-and-ship-it');
+const manifest=JSON.parse(fs.readFileSync('config/published-backend.json'));
+const legacy=['chat','creative-preview','health','notify-idy-whatsapp'];
+const config={'*':{nodeVersion:'24',nodeBundler:'nft'},...Object.fromEntries(legacy.map(name=>[name,{nodeVersion:'24',nodeBundler:'esbuild'}]))};
+const bundles=await zipFunctions('netlify/functions',path.resolve('.quote-bundles'),{config,archiveFormat:'zip'});
+assert.deepEqual(bundles.map(b=>b.name).sort(),[...manifest.knownFunctionNames].sort(),'O pacote deve preservar todas as dez funções conhecidas');
+for(const name of legacy)assert.equal(bundles.find(b=>b.name===name).runtimeAPIVersion,1,name);
+for(const name of ['artwork','partial-lead','idle-leads','panel-api','whatsapp-webhook'])assert.equal(bundles.find(b=>b.name===name).runtimeAPIVersion,2,name);
+const chat=bundles.find(b=>b.name==='chat');
+execFileSync('python3',['-c','import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(".quote-unpacked")',chat.path]);
+const {handler}=createRequire(import.meta.url)(path.resolve('.quote-unpacked/chat.js'));
+const event=text=>({httpMethod:'POST',body:JSON.stringify({messages:[{role:'user',content:text}]})});
+const result=await handler(event('Quero 3 cópias A3 coloridas, somente frente.'));
+assert.equal(result.statusCode,200);assert.equal(JSON.parse(result.body).quote.totalCents,900);
+const unknown=JSON.parse((await handler(event('Quero 3 cópias A4 coloridas somente frente'))).body);assert.equal(unknown.handoff,true);assert(!unknown.quote);
+for(const name of ['panel-api','whatsapp-webhook']){
+ const bundle=bundles.find(b=>b.name===name);
+ const entries=JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys; print(json.dumps(zipfile.ZipFile(sys.argv[1]).namelist()))',bundle.path],{encoding:'utf8'}));
+ assert(entries.some(p=>p.endsWith('conversation-store.mjs')),name+' precisa incluir o armazenamento recuperado');
+ assert(entries.some(p=>p.includes('node_modules/@netlify/blobs/')),name+' precisa incluir a dependência Blobs');
+}
+fs.mkdirSync('preview/orcamento-a3',{recursive:true});
+fs.writeFileSync('preview/orcamento-a3/bundle-report.json',JSON.stringify({threeA3Cents:900,unknownA4Human:true,functions:bundles.map(b=>({name:b.name,runtimeAPIVersion:b.runtimeAPIVersion})),knownInventoryPreserved:true,authoritativeLiveInventoryConfirmed:false,readyForPublication:false,pending:['Acesso ao projeto e branch de produção','Inventário e configuração do deploy ativo','Aprovação do responsável']},null,2));
+console.log('TEN_KNOWN_FUNCTIONS_BUNDLED_WITHOUT_PUBLICATION');

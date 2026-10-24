@@ -22,7 +22,7 @@ async function page(fetchImpl=async()=>Response.json({answer:'Resposta de teste'
   }
   const get=id=>{assert(elements.has(id),'Elemento '+id);return elements.get(id)};
   const wrappedFetch=(url,options)=>mockPartial&&url==='/.netlify/functions/partial-lead'?Promise.resolve(Response.json({ok:true,ticket:'mock-ticket'})):fetchImpl(url,options);
-  const context=vm.createContext({document:{getElementById:get,createElement:()=>new Element()},fetch:wrappedFetch,FormData,File,Uint8Array,atob,AbortSignal,URL,crypto:webcrypto,console,encodeURIComponent,setTimeout:fn=>fn(),alert:message=>{throw Error(message)}});
+  const context=vm.createContext({document:{getElementById:get,createElement:()=>new Element()},fetch:wrappedFetch,FormData,File,Uint8Array,atob,AbortSignal,AbortController,URL,crypto:webcrypto,console,encodeURIComponent,setTimeout:fn=>fn(),alert:message=>{throw Error(message)}});
   vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
   return {get,html,context,flush:()=>vm.runInContext('partialSaving',context),async start(){get('clientName').value='Cliente de teste';get('clientEmail').value='cliente@example.invalid';get('clientPhone').value='(51) 99999-0000';await get('startForm').trigger('submit',{preventDefault(){}});await vm.runInContext('partialSaving',context)}};
 }
@@ -165,5 +165,19 @@ test('cliques humanos durante resposta são enfileirados e não duplicam o regis
 test('falha no registro humano mantém o anexo e admite uma nova solicitação direta',async()=>{
   let attempts=0,form;const p=await page(async(url,options)=>{if(url==='/.netlify/functions/chat')return Response.json({answer:'Vou solicitar a equipe.',handoff:true});if(url==='/'){form=options.body;if(++attempts===1)return new Response('Falha',{status:503});}return Response.json({ok:true});});
   await p.start();await attach(p);await say(p,'humano');assert.match(p.get('status').textContent,/Não foi possível confirmar/);await say(p,'Quero falar com alguém');assert.equal(attempts,2);assert.equal(form.get('arte').name,'arte.pdf');
+});
+test('botão humano cancela uma resposta pendente e registra histórico sem esperar a IA',async()=>{
+  let form,notice=0,started;const ready=new Promise(resolve=>started=resolve);
+  const p=await page((url,options={})=>{
+    if(url==='/.netlify/functions/chat'){started();return new Promise((_,reject)=>options.signal.addEventListener('abort',()=>reject(new Error('Aborted')),{once:true}));}
+    if(url==='/')form=options.body;if(url==='/.netlify/functions/notify-idy-whatsapp')notice++;return Promise.resolve(Response.json({ok:true}));
+  });await p.start();await attach(p);p.get('message').value='Preciso de ajuda';const response=p.get('send').trigger('click');await ready;await p.get('humanContact').trigger('click');await response;
+  assert.match(form.get('resumo'),/Preciso de ajuda/);assert.match(form.get('resumo'),/atendimento humano/);assert.equal(form.get('arte').name,'arte.pdf');assert.equal(notice,1);assert(!p.get('chat').children.some(c=>/Erro de conexão/.test(c.children[0]?.textContent||'')));
+});
+test('arquivo inválido ou grande mantém o anexo anterior e permite corrigir a seleção',async()=>{
+  const p=await page();await p.start();await attach(p);
+  for(const f of [new File(['x'],'programa.exe',{type:'application/octet-stream'}),new File([new Uint8Array(8*1024*1024+1)],'grande.pdf',{type:'application/pdf'})]){
+    p.get('fileInput').files=[f];await p.get('fileInput').trigger('change');assert.match(p.get('filetag').textContent,/PDF.*8 MB.*anterior/);assert.equal(vm.runInContext('selectedFile.name',p.context),'arte.pdf');
+  }
 });
 

@@ -1,3 +1,5 @@
+throw new Error('Publicação legada desativada. A PR #4 exige inventário confirmado e aprovação antes de preparar um novo deploy.');
+
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
@@ -164,3 +166,4 @@ try{
  }else report.state='failed-before-production';
  report.publicationError=String(error.message).slice(0,250);fs.writeFileSync('.netlify/page-publication.json',JSON.stringify(report,null,2));console.log('PUBLICATION_STOPPED '+JSON.stringify(report));throw error;
 }
+

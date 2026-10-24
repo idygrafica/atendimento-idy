@@ -32,6 +32,13 @@ try{
   assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)));
   checks.push({width,scenario:'Preço em dois turnos',answer});await context.close();
 
+  ({page,context}=await start(width));await say(page,'Quero 3 cópias A3 coloridas, somente frente.');await say(page,'Sim');
+  answer=await page.locator('.msg.bot').last().innerText();assert.match(answer,/Anexe.*PDF.*clipe/);assert(!/R\$|\?/.test(answer));checks.push({width,scenario:'Confirmação de arquivo sem repetir orçamento'});await context.close();
+
+  ({page,context}=await start(width));const humanPending=records.forms.length;
+  await page.route('**/.netlify/functions/chat',()=>{});await page.locator('#message').fill('Preciso de ajuda');await page.locator('#send').click();await page.locator('#status').filter({hasText:'Respondendo'}).waitFor();
+  await page.locator('#humanContact').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Atendimento registrado e equipe avisada pelo WhatsApp.');assert.equal(records.forms.length,humanPending+1);assert.match(records.forms.at(-1).get('resumo'),/Preciso de ajuda/);checks.push({width,scenario:'Humano interrompe resposta pendente'});await context.close();
+
   ({page,context}=await start(width));const formCount=records.forms.length,noticeCount=records.notifications.length;
   await say(page,'Quero 100 cópias A3 coloridas, frente e verso.');answer=await page.locator('.msg.bot').last().innerText();assert.match(answer,/R\$ 6,00 por folha.*Total: R\$ 600,00/);checks.push({width,scenario:'100 frente e verso',answer});
   await say(page,'Quanto fica em papel mais grosso?',true);assert.equal(records.forms.length,formCount+1);assert.equal(records.notifications.length,noticeCount+1);assert.match(records.forms.at(-1).get('resumo'),/Não há preço cadastrado/);assert.match(records.forms.at(-1).get('resumo'),/100 cópias/);checks.push({width,scenario:'Papel sem preço: transferência com histórico'});await context.close();

@@ -1,0 +1,57 @@
+{
+  "observedAt": "2026-10-24T13:17:28.929Z",
+  "auditRun": "https://github.com/idygrafica/atendimento-idy/actions/runs/40097487653",
+  "authoritativeInventoryConfirmed": false,
+  "netlifyProductionBranchConfirmed": false,
+  "lastPublishedSourceCommit": "e59810a0609fb4435d55460970faf7f1d5f14dae",
+  "knownFunctionNames": [
+    "artwork",
+    "chat",
+    "conversation-store",
+    "creative-preview",
+    "health",
+    "idle-leads",
+    "notify-idy-whatsapp",
+    "panel-api",
+    "partial-lead",
+    "whatsapp-webhook"
+  ],
+  "recoveredSources": [
+    {
+      "path": "netlify/functions/conversation-store.mjs",
+      "sourceUrl": "https://atendimento-idy.netlify.app/netlify/functions/conversation-store.mjs",
+      "sha256": "8728c373bc4c082f7dc246a363b634ac8bd208eab5d34e1198b06ebf79e3a35d",
+      "modified": false
+    },
+    {
+      "path": "netlify/functions/creative-preview.js",
+      "sourceUrl": "https://atendimento-idy.netlify.app/netlify/functions/creative-preview.js",
+      "sha256": "14916d45888c08c2d079a55cd08545ea11a981ada605fb51a334353d6a623253",
+      "modified": false
+    },
+    {
+      "path": "netlify/functions/health.js",
+      "sourceUrl": "https://atendimento-idy.netlify.app/netlify/functions/health.js",
+      "sha256": "b0e3c13902ce9f493bce9684ca3c402d9cad3c295848c90f8b74e7734f2991f0",
+      "modified": false
+    },
+    {
+      "path": "netlify/functions/notify-idy-whatsapp.js",
+      "sourceUrl": "https://atendimento-idy.netlify.app/netlify/functions/notify-idy-whatsapp.js",
+      "sha256": "df13b5ee447f9f1a50667a74b6cd9f40e2d1d2dcaee6cb694498882403d91e5b",
+      "modified": false
+    },
+    {
+      "path": "netlify/functions/panel-api.mjs",
+      "sourceUrl": "https://atendimento-idy.netlify.app/netlify/functions/panel-api.mjs",
+      "sha256": "f47fe03a266971b78583b1794b2acb6d46b7a3c22be1f1a316ac4907e4d31191",
+      "modified": false
+    },
+    {
+      "path": "netlify/functions/whatsapp-webhook.mjs",
+      "sourceUrl": "https://atendimento-idy.netlify.app/netlify/functions/whatsapp-webhook.mjs",
+      "sha256": "93f28acedbb3c16de79275a367ef2a007a1b2894aaeb18fb3ede684ce74cfa60",
+      "modified": false
+    }
+  ]
+}

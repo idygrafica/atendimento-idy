@@ -1,31 +1,19 @@
-name: Publish verified artwork and idle recovery
+name: Valida atendimento sem publicar
 on:
   push:
     branches: [codex/tela-inicial-atendimento]
 permissions:
   contents: read
-concurrency:
-  group: atendimento-idy-page-publication
-  cancel-in-progress: false
 jobs:
-  publish:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-      - name: Validate artwork and idle recovery without sending messages
-        run: node --test --test-isolation=none flow.test.mjs artwork.test.mjs partial-leads.test.mjs
-      - name: Verify real draft generation and preserve existing functions before publishing
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
-        run: node deploy-artwork.mjs
-      - name: Store sanitized publication report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: artwork-publication-report
-          path: .netlify/page-publication.json
+          node-version: 24
+      - name: Testes sem credenciais e sem publicação
+        run: node --test --test-isolation=none print-quote.test.mjs flow.test.mjs artwork.test.mjs partial-leads.test.mjs recovered-backend.test.mjs

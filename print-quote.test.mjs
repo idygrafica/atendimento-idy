@@ -65,6 +65,10 @@ test('não pergunta novamente por arquivo informado nem depois de já ter pergun
   assert.match(printReply([first]).answer,/Total: R\$ 9,00/);
   assert(!/já tem.*arquivo/.test(printReply([u('3 cópias A3 coloridas somente frente'),a('Você já tem o arquivo para impressão?'),u('Qual o total?')]).answer));
 });
+test('sim após a pergunta sobre arquivo oferece o clipe sem repetir orçamento ou pergunta',()=>{
+  const r=printReply([u('3 cópias A3 coloridas somente frente'),a('Total: R$ 9,00. Você já tem o arquivo para impressão?'),u('Sim')]);
+  assert.equal(r.reason,'file-instructions');assert.equal(r.quote.totalCents,900);assert.match(r.answer,/Anexe.*PDF.*clipe/);assert(!/R\$|\?/.test(r.answer));
+});
 test('frente/verso é duplex; uma negação não fecha um orçamento com a configuração recusada',()=>{
   assert.equal(printReply([u('3 cópias A3 coloridas frente/verso')]).quote.totalCents,1800);
   assert(!printReply([u('3 cópias A3 coloridas, não quero frente e verso')]).quote);

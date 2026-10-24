@@ -1,4 +1,4 @@
-name: Valida orçamento A3 sem publicação
+name: Valida atendimento completo sem publicação
 on:
   push:
     branches: [codex/orcamento-a3-direto]
@@ -7,49 +7,35 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-      - name: Test arithmetic, human transfer and existing functionality
+          node-version: 24
+      - name: Test arithmetic, human transfer and recovered backend without external services
         run: |
           mkdir -p preview/orcamento-a3
-          node --test --test-isolation=none print-quote.test.mjs flow.test.mjs artwork.test.mjs partial-leads.test.mjs > preview/orcamento-a3/unit-tests.txt
+          node --test --test-isolation=none print-quote.test.mjs flow.test.mjs artwork.test.mjs partial-leads.test.mjs recovered-backend.test.mjs > preview/orcamento-a3/unit-tests.txt
           cat preview/orcamento-a3/unit-tests.txt
-      - name: Install isolated browser and packaging tools without credentials
+      - name: Install pinned browser and packaging tools without credentials
         run: |
-          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund playwright@1.55.0 @netlify/blobs@11.1.4
+          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund --fetch-retries=1 --fetch-timeout=90000 playwright@1.55.0
           npx playwright install --with-deps chromium
           mkdir -p .quote-tooling
           node -e "require('fs').writeFileSync('.quote-tooling/package.json',JSON.stringify({private:true,dependencies:{'@netlify/zip-it-and-ship-it':'16.3.0'},overrides:{'@netlify/serverless-functions-api':'2.18.0'}}))"
-          npm install --prefix .quote-tooling --no-package-lock --ignore-scripts --no-audit --no-fund
-      - name: Run actual quote endpoint and mock only registration, storage and notices
+          npm install --prefix .quote-tooling --no-package-lock --ignore-scripts --no-audit --no-fund --fetch-retries=1 --fetch-timeout=90000
+      - name: Test customer experience in Chromium without real registrations or messages
         run: node price-quote.browser.mjs
-      - name: Verify packaged chat includes calculation and centralized prices
-        run: |
-          node --input-type=module <<'JS'
-          import {createRequire} from 'node:module';
-          import {execFileSync} from 'node:child_process';
-          import fs from 'node:fs';
-          import path from 'node:path';
-          import assert from 'node:assert/strict';
-          const require=createRequire(process.cwd()+'/.quote-tooling/package.json'),{zipFunctions}=require('@netlify/zip-it-and-ship-it');
-          const bundles=await zipFunctions('netlify/functions',path.resolve('.quote-bundles'),{config:{'*':{nodeVersion:'24',nodeBundler:'nft'},chat:{nodeVersion:'24',nodeBundler:'esbuild'}},archiveFormat:'zip'});
-          const bundle=bundles.find(b=>b.name==='chat');assert(bundle);assert.equal(bundle.runtimeAPIVersion,1);
-          execFileSync('python3',['-c','import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(".quote-unpacked")',bundle.path]);
-          const {handler}=createRequire(import.meta.url)(path.resolve('.quote-unpacked/chat.js'));
-          const event=text=>({httpMethod:'POST',body:JSON.stringify({messages:[{role:'user',content:text}]})});
-          const result=await handler(event('Quero 3 cópias A3 coloridas, somente frente.'));
-          assert.equal(result.statusCode,200);assert.equal(JSON.parse(result.body).quote.totalCents,900);
-          const unknown=JSON.parse((await handler(event('Quero 3 cópias A4 coloridas somente frente'))).body);assert.equal(unknown.handoff,true);assert(!unknown.quote);
-          fs.writeFileSync('preview/orcamento-a3/bundle-report.json',JSON.stringify({runtimeAPIVersion:1,threeA3Cents:900,unknownA4Human:true,functions:bundles.map(b=>b.name)},null,2));
-          console.log('QUOTE_BUNDLE_VERIFIED');
-          JS
+      - name: Test recovered panel backend and responsive interface with fictitious conversations
+        run: node panel.browser.mjs
+      - name: Verify all ten known functions and compiled prices
+        run: node verify-bundles.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: orcamento-a3-sem-publicacao
+          name: atendimento-completo-sem-publicacao
           path: preview/orcamento-a3/
           retention-days: 14

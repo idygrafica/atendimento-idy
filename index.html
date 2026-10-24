@@ -51,7 +51,7 @@
     <div id="chatPanel" class="panel" hidden>
       <div id="chat" role="log" aria-live="polite"></div>
       <div id="status" class="status">Pronto.</div>
-      <div id="filetag" class="filetag"></div>
+      <div id="filetag" class="filetag" role="status" aria-live="polite">PDF, PNG ou JPG, até 8 MB.</div>
       <div id="saveStatus" class="status" role="status"></div>
       <div class="human-contact"><a id="humanContact" href="https://wa.me/5551981687562?text=Ol%C3%A1!%20Vim%20pelo%20Atendimento%20com%20IA%20da%20IDY%20Gr%C3%A1fica%20e%20gostaria%20de%20falar%20com%20um%20atendente." target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg><span>Falar com atendimento humano</span></a></div>
       <div class="composer">
@@ -91,6 +91,7 @@ const history=[];
 let selectedFile=null;
 let clientContact=null;
 let asking=false;
+let chatRequestController=null;
 let handoffOffered=false;
 let handoffQueued=false;
 let humanHandoffQueued=false;
@@ -259,12 +260,13 @@ async function ask(){
     handoffOffered=false;await submitConversation();return;
   }
   handoffOffered=false;retryAvailable=false;asking=true;send.disabled=true;updateArtworkControls();statusEl.textContent='Respondendo...';
+  chatRequestController=new AbortController();
   let transferToHuman=false;
   try{
-    const r=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
+    const r=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history}),signal:AbortSignal.any([chatRequestController.signal,AbortSignal.timeout(25000)])});
     const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`HTTP ${r.status}`);
     const answer=data.answer||'Não consegui gerar uma resposta.';addMsg(answer,'bot');history.push({role:'assistant',content:answer});queuePartialSave();statusEl.textContent='Pronto.';transferToHuman=data.handoff===true;
-  }catch(e){addMsg('Erro de conexão: '+e.message,'bot');statusEl.textContent='Falha na conexão.';}finally{asking=false;send.disabled=false;updateArtworkControls();input.focus();if(transferToHuman||humanHandoffQueued){humanHandoffQueued=false;await submitConversation();}}
+  }catch(e){if(!humanHandoffQueued){addMsg('Não consegui responder agora. Tente novamente ou use o botão de atendimento humano.','bot');statusEl.textContent='Falha na conexão.';}}finally{chatRequestController=null;asking=false;send.disabled=false;updateArtworkControls();input.focus();if(transferToHuman||humanHandoffQueued){humanHandoffQueued=false;await submitConversation();}}
 }
 
 document.getElementById('humanContact').addEventListener('click',async()=>{
@@ -275,7 +277,7 @@ document.getElementById('humanContact').addEventListener('click',async()=>{
   }
   const summary=history.slice(-8).map(m=>(m.role==='user'?'CLIENTE: ':'IDY: ')+m.content).join('\n').slice(-2500);
   document.getElementById('humanContact').href='https://wa.me/5551981687562?text='+encodeURIComponent('Olá! Quero continuar meu atendimento com uma pessoa da IDY.\nCliente: '+clientContact.nome+'\n'+summary);
-  if(asking||artworkBusy){humanHandoffQueued=true;return;}
+  if(asking||artworkBusy){humanHandoffQueued=true;chatRequestController?.abort();statusEl.textContent='Preparando encaminhamento para a equipe...';return;}
   await submitConversation();
 });
 
@@ -285,7 +287,7 @@ attach.addEventListener('click',()=>{if(clientContact&&!submitting&&!artworkBusy
 fileInput.addEventListener('change',()=>{
   if(!clientContact||submitting||artworkBusy)return;
   const f=fileInput.files?.[0];if(!f)return;
-  if(f.size>8*1024*1024){alert('O arquivo pode ter no máximo 8 MB.');fileInput.value='';return;}
+  if(f.size>8*1024*1024||!/\.(?:pdf|png|jpe?g)$/i.test(f.name)||(f.type&&!['application/pdf','image/png','image/jpeg'].includes(f.type))){filetag.textContent='Use PDF, PNG ou JPG, até 8 MB.'+(selectedFile?' O arquivo anterior continua selecionado.':'');fileInput.value='';return;}
   generatedFile=null;if(proposalImage){proposalImage.remove();proposalImage=null;}if(proposalDownload){proposalDownload.remove();proposalDownload=null;}if(proposalUrl){URL.revokeObjectURL(proposalUrl);proposalUrl=null;}
   selectedFile=f;filetag.textContent='Arte selecionada: '+f.name;const bubble=addMsg('Arquivo selecionado: '+f.name,'user');showArtPreview(f,bubble);history.push({role:'user',content:'O cliente selecionou uma arte/arquivo chamado '+f.name+'.'});updateArtworkControls();
   handoffOffered=false;handoffQueued=true;offerHandoff();
