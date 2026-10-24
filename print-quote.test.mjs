@@ -28,6 +28,11 @@ test('novo pedido e novo produto não herdam cor provisória de outro atendiment
   assert.equal(printReply([...first,u('Novo pedido: 3 cópias A3 somente frente')]).reason,'missing-color');
   assert.equal(printReply([...first,u('Quero 500 cartões'),u('3 cópias A3 somente frente')]).reason,'missing-color');
 });
+test('respostas curtas sobre outro produto não contaminam um orçamento A3 posterior',()=>{
+  const h=[u('Quero 500 cartões'),a('Qual cor?'),u('Colorida'),a('Qual lado?'),u('Frente e verso'),u('A3')];
+  assert.equal(printReply(h).reason,'missing-color');
+  assert.equal(printReply([...h,u('Colorida'),u('3, somente frente')]).quote.totalCents,900);
+});
 test('negação de uma cor não é tratada como escolha e PB não ganha preço inventado',()=>{
   assert.equal(printReply([u('3 cópias A3 somente frente, não quero colorida')]).reason,'missing-color');
   for(const color of ['PB','P/B','Preta e branca','sem cores']){const r=printReply([u('3 cópias A3 somente frente, '+color)]);assert.equal(r.handoff,true);assert(!r.quote);}
