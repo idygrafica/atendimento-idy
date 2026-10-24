@@ -1,11 +1,11 @@
-name: Diagnostica autenticação Netlify sem publicação
+name: Audita backend publicado sem alterações
 on:
   push:
     branches: [codex/audita-atendimento-precos]
 permissions:
   contents: read
 jobs:
-  diagnose:
+  public-source:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
@@ -15,12 +15,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Leituras autenticadas sem expor credenciais
+      - run: node .github/scripts/audit-public-backend.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-publico-sem-publicacao
+          path: preview/production-audit/
+  auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Leitura de autenticação sem alterar credenciais
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID || secrets.NETLIFY_SITE_ID }}
         run: node .github/scripts/diagnose-netlify-auth.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: diagnostico-netlify-sem-publicacao
+          name: autenticacao-sem-publicacao
           path: diagnostico-netlify/report.json
