@@ -1,7 +1,7 @@
 name: Valida atendimento completo sem publicação
 on:
   push:
-    branches: [codex/orcamento-a3-direto]
+    branches: [codex/orcamento-a3-direto, codex/corrige-contexto-cor]
 permissions:
   contents: read
 jobs:

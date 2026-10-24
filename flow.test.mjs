@@ -180,4 +180,21 @@ test('arquivo inválido ou grande mantém o anexo anterior e permite corrigir a 
     p.get('fileInput').files=[f];await p.get('fileInput').trigger('change');assert.match(p.get('filetag').textContent,/PDF.*8 MB.*anterior/);assert.equal(vm.runInContext('selectedFile.name',p.context),'arte.pdf');
   }
 });
+test('clique e Enter concorrentes enviam um único turno e não duplicam o histórico',async()=>{
+  let release,payload,calls=0;const waiting=new Promise(resolve=>release=resolve);
+  const p=await page(async(url,options)=>{if(url==='/.netlify/functions/chat'){calls++;payload=JSON.parse(options.body);await waiting;return Response.json({answer:'Qual formato?'})}return Response.json({ok:true})});await p.start();
+  p.get('message').value='Colorida';const pending=p.get('send').trigger('click');await p.get('message').trigger('keydown',{key:'Enter',preventDefault(){}});await p.get('send').trigger('click');release();await pending;
+  assert.equal(calls,1);assert.equal(payload.messages.filter(m=>m.role==='user').length,1);assert.equal(vm.runInContext('history.filter(m=>m.role==="user").length',p.context),1);
+});
+test('falha de rede conserva a cor já respondida e a próxima mensagem recebe o total',async()=>{
+  let failColor=true,payload;
+  const p=await page(async(url,options)=>{if(url==='/.netlify/functions/chat'){payload=JSON.parse(options.body);if(failColor&&payload.messages.at(-1).content==='Cores'){failColor=false;return new Response('Falha',{status:503})}const r=await chatHandler({httpMethod:'POST',body:options.body});return new Response(r.body,{status:r.statusCode})}return Response.json({ok:true})});await p.start();
+  await say(p,'3 cópias A3 somente frente');await say(p,'Cores');assert.match(p.get('status').textContent,/Falha/);await say(p,'Qual o total?');assert.match(p.get('chat').children.at(-1).children[0].textContent,/Total: R\$ 9,00/);assert.equal(payload.messages.filter(m=>m.role==='user'&&m.content==='Cores').length,1);
+});
+test('anexo continua no histórico e no registro, sem ser interpretado como instrução de preço',async()=>{
+  let form;
+  const p=await page(async(url,options)=>{if(url==='/.netlify/functions/chat'){const r=await chatHandler({httpMethod:'POST',body:options.body});return new Response(r.body,{status:r.statusCode})}if(url==='/')form=options.body;return Response.json({ok:true})});await p.start();await say(p,'3 cópias A3 coloridas somente frente');
+  p.get('fileInput').files=[new File(['PDF fictício'],'A4 preto e branco.pdf',{type:'application/pdf'})];await p.get('fileInput').trigger('change');await say(p,'Qual o total?');assert.match(p.get('chat').children.at(-1).children[0].textContent,/Total: R\$ 9,00/);
+  assert.equal(vm.runInContext('history.find(m=>m.kind==="attachment").content',p.context),'O cliente selecionou uma arte/arquivo chamado A4 preto e branco.pdf.');await say(p,'Humano');assert.equal(form.get('arte').name,'A4 preto e branco.pdf');assert.match(form.get('resumo'),/A4 preto e branco.pdf/);
+});
 

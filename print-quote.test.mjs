@@ -7,6 +7,36 @@ const {handler}=require('./netlify/functions/chat.js');
 const u=content=>({role:'user',content}),a=content=>({role:'assistant',content});
 const event=messages=>({httpMethod:'POST',body:JSON.stringify({messages})});
 
+for(const color of ['Colorida','Cores','Color','Em cores'])test('cor anterior ao formato é lembrada: '+color,()=>{
+  const h=[u(color),a('Qual é o formato da impressão?'),u('A3'),a('Quantas folhas?'),u('3, somente frente')];
+  const r=printReply(h);assert.equal(r.quote.totalCents,900);assert.equal(r.reason,'quote');assert(!/colorida ou|preto e branco\?/.test(r.answer));
+});
+test('quantidade, cor e faces anteriores ao formato são reaproveitadas juntas',()=>{
+  const r=printReply([u('3'),a('Qual lado?'),u('Frente e verso'),a('Qual cor?'),u('Cores'),a('Qual formato?'),u('A3')]);
+  assert.equal(r.quote.totalCents,1800);assert.equal(r.quote.unitCents,600);
+});
+test('resposta curta cores fecha o preço sem repetir a pergunta de cor',()=>{
+  const r=printReply([u('3 cópias A3 somente frente'),a('A impressão é colorida ou em preto e branco?'),u('Cores')]);
+  assert.equal(r.quote.totalCents,900);assert(!/colorida ou|preto e branco\?/.test(r.answer));
+});
+for(const kind of [undefined,'attachment'])test('nome do anexo não troca fatos do pedido: '+String(kind),async()=>{
+  const h=[u('3 cópias A3 coloridas somente frente'),{...u('O cliente selecionou uma arte/arquivo chamado orçamento A4 preto e branco.pdf.'),...(kind?{kind}:{})},u('Qual o total?')];
+  const r=JSON.parse((await handler(event(h))).body);assert.equal(r.quote.totalCents,900);assert.equal(r.handoff,undefined);assert.match(r.answer,/A3 coloridas/);
+});
+test('novo pedido e novo produto não herdam cor provisória de outro atendimento',()=>{
+  const first=[u('Colorida'),u('3'),u('Somente frente')];
+  assert.equal(printReply([...first,u('Novo pedido: 3 cópias A3 somente frente')]).reason,'missing-color');
+  assert.equal(printReply([...first,u('Quero 500 cartões'),u('3 cópias A3 somente frente')]).reason,'missing-color');
+});
+test('negação de uma cor não é tratada como escolha e PB não ganha preço inventado',()=>{
+  assert.equal(printReply([u('3 cópias A3 somente frente, não quero colorida')]).reason,'missing-color');
+  for(const color of ['PB','P/B','Preta e branca','sem cores']){const r=printReply([u('3 cópias A3 somente frente, '+color)]);assert.equal(r.handoff,true);assert(!r.quote);}
+});
+test('metadado de anexo inválido não altera o contrato do endpoint',async()=>{
+  assert.equal((await handler(event([{role:'assistant',kind:'attachment',content:'Arquivo'}]))).statusCode,400);
+  assert.equal((await handler(event([{role:'user',kind:'unknown',content:'3 A3 coloridas'}]))).statusCode,400);
+});
+
 test('tabela autoriza exclusivamente A3 colorido comum, 300 centavos por face',()=>{
   assert.deepEqual(require('./config/print-prices.json').prices,[{format:'A3',color:'color',paper:'sulfite-comum',grammage:null,pricePerFaceCents:300}]);
 });
