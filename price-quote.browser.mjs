@@ -6,6 +6,9 @@ const require=createRequire(import.meta.url),{handler}=require('./netlify/functi
 const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright');
 const out='preview/orcamento-a3';fs.mkdirSync(out,{recursive:true});
 const records={forms:[],notifications:[],chat:[],partial:[]},checks=[];
+const originalFetch=globalThis.fetch,originalKey=process.env.OPENAI_API_KEY;let aiCallsSimulated=0;
+process.env.OPENAI_API_KEY='browser-fixture-only';
+globalThis.fetch=async(url)=>{assert.equal(url,'https://api.openai.com/v1/responses');aiCallsSimulated++;return Response.json({output_text:'Qual é o formato da impressão?'})};
 const server=http.createServer(async(req,res)=>{
   try{
     const chunks=[];for await(const b of req)chunks.push(b);const buffer=Buffer.concat(chunks),raw=buffer.toString('utf8');
@@ -25,6 +28,17 @@ async function start(width){const context=await browser.newContext({viewport:{wi
 async function say(page,text,transfer=false){await page.locator('#message').fill(text);await page.locator('#send').click();if(transfer)await page.waitForFunction(()=>document.querySelector('#status').textContent==='Atendimento registrado e equipe avisada pelo WhatsApp.');else await page.waitForFunction(()=>document.querySelector('#status').textContent==='Pronto.');}
 try{
  for(const width of [390,1440]){
+  let early=await start(width);const earlyCalls=aiCallsSimulated;
+  await say(early.page,'Colorida');await say(early.page,'A3');let earlyAnswer=await early.page.locator('.msg.bot').last().innerText();assert(!/colorida ou|preto e branco\?/.test(earlyAnswer));
+  await say(early.page,'3, somente frente');earlyAnswer=await early.page.locator('.msg.bot').last().innerText();assert.match(earlyAnswer,/Total: R\$ 9,00/);assert.equal(aiCallsSimulated,earlyCalls+1);checks.push({width,scenario:'Cor informada antes do formato não é perguntada novamente'});await early.context.close();
+
+  early=await start(width);await say(early.page,'3 cópias A3 somente frente');const beforeColor=records.chat.length;let releaseColor;const colorGate=new Promise(resolve=>releaseColor=resolve);
+  await early.page.route('**/.netlify/functions/chat',async route=>{await colorGate;await route.continue()});await early.page.locator('#message').fill('Cores');
+  await early.page.evaluate(()=>{document.querySelector('#send').click();document.querySelector('#message').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));document.querySelector('#send').click()});releaseColor();await early.page.waitForFunction(()=>document.querySelector('#status').textContent==='Pronto.');
+  assert.equal(records.chat.length,beforeColor+1);assert.match(await early.page.locator('.msg.bot').last().innerText(),/Total: R\$ 9,00/);assert.equal(records.chat.at(-1).messages.filter(m=>m.role==='user'&&m.content==='Cores').length,1);checks.push({width,scenario:'Cores e clique/Enter concorrentes produzem um único orçamento'});await early.context.close();
+
+  early=await start(width);await say(early.page,'3 cópias A3 coloridas somente frente');await early.page.locator('#fileInput').setInputFiles({name:'A4 preto e branco.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 ficticio')});await say(early.page,'Qual o total?');assert.match(await early.page.locator('.msg.bot').last().innerText(),/Total: R\$ 9,00/);assert(records.chat.at(-1).messages.some(m=>m.kind==='attachment'));checks.push({width,scenario:'Nome do arquivo não troca formato nem cor'});await early.context.close();
+
   let {page,context}=await start(width);const before=records.forms.length;
   await say(page,'Quanto custa uma cópia A3 colorida?');let answer=await page.locator('.msg.bot').last().innerText();assert.match(answer,/R\$ 3,00.*R\$ 6,00/);assert.match(answer,/Quantas folhas/);
   await say(page,'Quero 3, somente frente.');answer=await page.locator('.msg.bot').last().innerText();assert.match(answer,/Total: R\$ 9,00/);assert(!/Quantas|qual papel|retirada/i.test(answer));assert.equal(records.forms.length,before);assert(await page.locator('#humanContact').isVisible());
@@ -51,5 +65,5 @@ try{
   await page.locator('#humanContact').click();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Atendimento registrado e equipe avisada pelo WhatsApp.');assert.equal(records.forms.length,buttonBefore+1);assert.equal(records.forms.at(-1).get('arte').name,'arte-teste.pdf');assert.match(records.forms.at(-1).get('resumo'),/Quero falar com atendimento humano/);checks.push({width,scenario:'Botão humano conserva PDF e contato'});await context.close();
  }
  assert.deepEqual(errors,[]);
- const report={passed:checks.length,checks,javascriptErrors:errors,formsSimulated:records.forms.length,notificationsSimulated:records.notifications.length,realMessagesSent:0,realImagesGenerated:0};fs.writeFileSync(out+'/browser-report.json',JSON.stringify(report,null,2));console.log('BROWSER_VERIFIED',JSON.stringify(report));
-}finally{await browser.close();server.close();}
+ const report={passed:checks.length,checks,javascriptErrors:errors,formsSimulated:records.forms.length,notificationsSimulated:records.notifications.length,aiCallsSimulated,realMessagesSent:0,realImagesGenerated:0};fs.writeFileSync(out+'/browser-report.json',JSON.stringify(report,null,2));console.log('BROWSER_VERIFIED',JSON.stringify(report));
+}finally{await browser.close();server.close();globalThis.fetch=originalFetch;if(originalKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=originalKey;}

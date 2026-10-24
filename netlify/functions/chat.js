@@ -61,7 +61,8 @@ exports.handler = async function(event) {
     if (!Array.isArray(body.messages) || !body.messages.length || body.messages.length > 200) throw Error();
     messages = body.messages.map(m => {
       if (!m || !['user','assistant'].includes(m.role) || typeof m.content !== 'string' || !m.content.trim() || m.content.length > 8000) throw Error();
-      return { role: m.role, content: m.content.trim() };
+      if (m.kind !== undefined && (m.kind !== 'attachment' || m.role !== 'user')) throw Error();
+      return { role: m.role, content: m.content.trim(), ...(m.kind === 'attachment' ? {kind:'attachment'} : {}) };
     });
     if (messages.at(-1).role !== 'user') throw Error();
   } catch { return reply(400, { error: 'Histórico de mensagens inválido.' }); }

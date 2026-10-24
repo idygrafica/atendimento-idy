@@ -289,7 +289,7 @@ fileInput.addEventListener('change',()=>{
   const f=fileInput.files?.[0];if(!f)return;
   if(f.size>8*1024*1024||!/\.(?:pdf|png|jpe?g)$/i.test(f.name)||(f.type&&!['application/pdf','image/png','image/jpeg'].includes(f.type))){filetag.textContent='Use PDF, PNG ou JPG, até 8 MB.'+(selectedFile?' O arquivo anterior continua selecionado.':'');fileInput.value='';return;}
   generatedFile=null;if(proposalImage){proposalImage.remove();proposalImage=null;}if(proposalDownload){proposalDownload.remove();proposalDownload=null;}if(proposalUrl){URL.revokeObjectURL(proposalUrl);proposalUrl=null;}
-  selectedFile=f;filetag.textContent='Arte selecionada: '+f.name;const bubble=addMsg('Arquivo selecionado: '+f.name,'user');showArtPreview(f,bubble);history.push({role:'user',content:'O cliente selecionou uma arte/arquivo chamado '+f.name+'.'});updateArtworkControls();
+  selectedFile=f;filetag.textContent='Arte selecionada: '+f.name;const bubble=addMsg('Arquivo selecionado: '+f.name,'user');showArtPreview(f,bubble);history.push({role:'user',kind:'attachment',content:'O cliente selecionou uma arte/arquivo chamado '+f.name+'.'});updateArtworkControls();
   handoffOffered=false;handoffQueued=true;offerHandoff();
 });
 
