@@ -4,11 +4,15 @@ Esta aplicação é independente do site institucional. A proposta altera soment
 
 ## Estado e origem
 
-A base é `codex/tela-inicial-atendimento`, commit `e59810a0609fb4435d55460970faf7f1d5f14dae`. A interface pública auditada em 24/10 corresponde a essa base. A branch configurada como produção no Netlify continua **não confirmada**: a leitura autenticada da conta e do projeto respondeu 401 novamente.
+A PR #4 foi preparada para integrar diretamente à `main`. A integração inclui a `main` anterior (`e6dfd57d844d74d3d9f2bd734dd1f4ad750c174c`) e preserva o código de aplicação aprovado em `7947e3899f3bba16e0242e09a4d2b865b1a6bfed`. A divergência em `index.html` foi resolvida com a versão aprovada, que já mantém o cadastro, o logotipo, os controles e os anexos da main, além das melhorias validadas.
 
-A `main` não contém o backend completo. Não mudar o destino da PR para a `main` como tentativa de resolver autenticação. O workflow anterior da base publicava via `deploy-artwork.mjs` com o mesmo token. Nesta proposta, ele passa a executar somente testes, sem segredos, e o script antigo falha imediatamente antes de qualquer chamada remota.
+A última origem pública confirmada é `codex/tela-inicial-atendimento`, commit `e59810a0609fb4435d55460970faf7f1d5f14dae`. Isso não confirma a configuração atual do Netlify. O responsável iniciou a vinculação do GitHub com a branch `main`; ainda é necessário conferir Project ID, variáveis, Forms e Blobs do projeto existente antes de clicar em Deploy.
 
-A integração nativa Netlify GitHub App pode dispensar esse token, mas o vínculo, a branch e os controles de publicação precisam ser consultados no projeto existente. Não foram alterados nesta entrega.
+A main anterior continha somente a interface. A integração desta PR acrescenta as dez funções conhecidas e suas dependências, painel, histórico, anexos e preços. Não existe cópia, exclusão ou migração de dados do Netlify nessa operação Git.
+
+O workflow anterior da base publicava via `deploy-artwork.mjs` com o mesmo token. Nesta proposta, ele executa somente testes, sem segredos, e o script antigo falha imediatamente antes de qualquer chamada remota. Os commits de integração e merge usam `[skip netlify]` para impedir builds/publicações automáticas pela integração nativa. Não acionar Deploy/Trigger deploy antes da conferência do projeto.
+
+A integração nativa Netlify GitHub App dispensa o token desse workflow. O vínculo foi iniciado pelo responsável; o assistente não alterou configurações do projeto Netlify nem confirmou acesso autenticado a elas.
 
 ## Backend recuperado
 
@@ -81,6 +85,6 @@ Comparar esse inventário ao pacote antes de publicar. Funções desconhecidas p
 
 ## Liberação
 
-**A PR ainda não está liberada para produção.** O backend conhecido foi recuperado, mas faltam confirmar deploy ativo, branch/configuração Netlify, inventário completo e aprovação do responsável.
+**O código integrado permanece condicionado à conferência do destino Netlify antes de publicar.** O responsável autorizou a integração e o merge, mantendo a proibição de deploy até confirmar o projeto existente e suas configurações. Conferir deploy ativo, branch/configuração, inventário completo, variáveis, Forms e Blobs antes de clicar no botão de publicação.
 
 Não executar o script legado (desativado), habilitar integrações, fazer merge ou remover `[skip netlify]` para testar acesso: isso pode publicar. O futuro caminho de publicação será preparado somente após a conferência da configuração real e autorização explícita.
