@@ -59,7 +59,7 @@ node panel.browser.mjs
 node verify-bundles.mjs
 ```
 
-A suíte local contém 102 testes aprovados: cinco pedidos obrigatórios, cálculo, cadastro, anexos, histórico, falhas, autorização, transferência sem duplicação, recuperação das fontes e bloqueio do script antigo.
+A suíte local contém 103 testes aprovados: cinco pedidos obrigatórios, cálculo, cadastro, anexos, histórico, falhas, autorização, transferência sem duplicação, recuperação das fontes e bloqueio do script antigo. A confirmação de arquivo não oculta um preço novo quando o cliente muda as faces ou pergunta novamente pelo total.
 
 O workflow valida chat e painel em Chromium a 390/1440 px. O endpoint A3 e o backend recuperado são executados com Forms, armazenamento e provedores simulados. O empacotador oficial exige dez nomes conhecidos, APIs de runtime inferidas dos handlers, dependências de painel/webhook e o cálculo compilado.
 
