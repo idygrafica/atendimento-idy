@@ -1,0 +1,41 @@
+name: Valida atendimento completo sem publicação
+on:
+  push:
+    branches: [codex/orcamento-a3-direto]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Test arithmetic, human transfer and recovered backend without external services
+        run: |
+          mkdir -p preview/orcamento-a3
+          node --test --test-isolation=none print-quote.test.mjs flow.test.mjs artwork.test.mjs partial-leads.test.mjs recovered-backend.test.mjs > preview/orcamento-a3/unit-tests.txt
+          cat preview/orcamento-a3/unit-tests.txt
+      - name: Install pinned browser and packaging tools without credentials
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund --fetch-retries=1 --fetch-timeout=90000 playwright@1.55.0
+          npx playwright install --with-deps chromium
+          mkdir -p .quote-tooling
+          node -e "require('fs').writeFileSync('.quote-tooling/package.json',JSON.stringify({private:true,dependencies:{'@netlify/zip-it-and-ship-it':'16.3.0'},overrides:{'@netlify/serverless-functions-api':'2.18.0'}}))"
+          npm install --prefix .quote-tooling --no-package-lock --ignore-scripts --no-audit --no-fund --fetch-retries=1 --fetch-timeout=90000
+      - name: Test customer experience in Chromium without real registrations or messages
+        run: node price-quote.browser.mjs
+      - name: Test recovered panel backend and responsive interface with fictitious conversations
+        run: node panel.browser.mjs
+      - name: Verify all ten known functions and compiled prices
+        run: node verify-bundles.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atendimento-completo-sem-publicacao
+          path: preview/orcamento-a3/
+          retention-days: 14
