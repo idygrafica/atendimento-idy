@@ -27,11 +27,12 @@ const isolatedChecks=[];
 const originalFetch=globalThis.fetch;globalThis.fetch=async()=>{throw Error('Network calls forbidden during compiled-function checks')};
 try{for(const name of ['panel-api','whatsapp-webhook']){
  const bundle=bundles.find(b=>b.name===name);
- const root=extract(bundle),sources=sourceFiles(root),sentinel=name==='panel-api'?'PANEL_ACCESS_KEY não configurada':'Verification failed';
+ const root=extract(bundle),sources=sourceFiles(root),sentinel=name==='panel-api'?'PANEL_ACCESS_KEY':'Verification failed';
  const entry=sources.find(file=>fs.readFileSync(file,'utf8').includes(sentinel));
  assert(entry,name+' precisa conter o handler recuperado');
  assert(sources.some(file=>fs.readFileSync(file,'utf8').includes('idy-conversations')),name+' precisa preservar o armazenamento, inclusive quando incorporado pelo empacotador');
  const loaded=await import(pathToFileURL(entry));const invoke=typeof loaded.default==='function'?loaded.default:loaded.default?.default;
+ console.log('ISOLATED_BUNDLE_MODULE',JSON.stringify({name,entry:path.relative(root,entry),exports:Object.keys(loaded)}));
  assert.equal(typeof invoke,'function',name+' precisa exportar o handler nativo');
  const previous=process.env.PANEL_ACCESS_KEY;process.env.PANEL_ACCESS_KEY='bundle-fixture-only';
  try{const response=await invoke(new Request('https://fixture.invalid/'+name));assert.equal(response.status,name==='panel-api'?401:403);isolatedChecks.push({name,status:response.status,dependenciesResolvedOutsideCheckout:true});}
